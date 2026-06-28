@@ -1,0 +1,18 @@
+<div class="register-container">
+  <h2>Customer Registration</h2>
+  <p>Sign up to see fresh stock from trusted vendors in your neighbourhood.</p>
+  
+  <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
+    <!-- Account Details -->
+    <h3>Account Details</h3>
+    <input type="email" formControlName="email" placeholder="Email Address" required>
+    <input type="password" formControlName="password" placeholder="Password" required>
+
+    <!-- Locality Details (Crucial for filtering) -->
+    <h3>Your Neighbourhood</h3>
+    <input type="text" formControlName="area_name" placeholder="Area Name (e.g. Naya Nagar)" required>
+    <input type="text" formControlName="pincode" placeholder="Pincode" required>
+    
+    <button type="submit" [disabled]="customerForm.invalid">Create Account</button>
+  </form>
+</div>

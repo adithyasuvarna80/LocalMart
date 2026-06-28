@@ -1,0 +1,35 @@
+<div class="register-container">
+  <h2>Vendor Registration & Shop Setup</h2>
+  
+  <form [formGroup]="vendorForm" (ngSubmit)="onSubmit()">
+    <!-- Account Details -->
+    <h3>Account Details</h3>
+    <input type="email" formControlName="email" placeholder="Email Address" required>
+    <input type="password" formControlName="password" placeholder="Password" required>
+
+    <!-- Shop Setup Wizard -->
+    <h3>Shop Details</h3>
+    <input type="text" formControlName="shop_name" placeholder="Shop Name" required>
+    
+    <select formControlName="category">
+      <option value="VEGETABLES">Vegetables</option>
+      <option value="BAKERY">Bakery</option>
+      <option value="DAIRY">Dairy</option>
+      <option value="GROCERY">Grocery</option>
+    </select>
+
+    <input type="text" formControlName="locality" placeholder="Locality" required>
+    <input type="text" formControlName="pincode" placeholder="Pincode" required>
+    
+    <h3>Delivery Settings</h3>
+    <label>Delivery Fee (₹)</label>
+    <input type="number" formControlName="delivery_fee" required>
+    
+    <label>Free Delivery Threshold (₹)</label>
+    <input type="number" formControlName="free_delivery_threshold" required>
+
+    <button type="submit" [disabled]="vendorForm.invalid">Register Shop</button>
+  </form>
+</div>
+
+

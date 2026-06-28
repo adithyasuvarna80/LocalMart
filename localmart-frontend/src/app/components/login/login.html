@@ -1,0 +1,18 @@
+<div class="login-container">
+  <h2>Welcome back to LocalMart</h2>
+  <p>Log in to access your neighbourhood marketplace.</p>
+  
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+    <input type="email" formControlName="email" placeholder="Email Address" required>
+    <input type="password" formControlName="password" placeholder="Password" required>
+    
+    <button type="submit" [disabled]="loginForm.invalid">Log In</button>
+  </form>
+  
+  <div class="register-links">
+    <p>New to LocalMart?</p>
+    <!-- We will connect these links to the router shortly -->
+    <button type="button" routerLink ="/register/customer">Register as Customer</button>
+    <button type="button"  routerLink ="/register/vendor">Register as Vendor</button>
+  </div>
+</div>
