@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User, Vendor, Customer
 from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class VendorRegistrationSerializer(serializers.ModelSerializer):
     # Vendor-specific fields mapped to the profile
@@ -52,3 +53,13 @@ class CustomerRegistrationSerializer(serializers.ModelSerializer):
         # Create the linked customer profile
         Customer.objects.create(user=user, **customer_data)
         return user
+    
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # This calls the default validation (which handles the email/password check automatically)
+        data = super().validate(attrs)
+        
+        # Add the user's custom role to the JSON response
+        data['role'] = self.user.role
+        
+        return data
