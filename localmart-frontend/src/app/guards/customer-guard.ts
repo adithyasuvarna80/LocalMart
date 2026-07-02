@@ -7,7 +7,7 @@ export const customerGuard: CanActivateFn = (route, state) => {
   const role = localStorage.getItem('role'); 
 
   if (token && role === 'CUSTOMER') {
-    return true; // Let them pass
+    return true; 
   }
   
   router.navigate(['/login']);

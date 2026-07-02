@@ -1,1 +1,94 @@
-<p>vendor-dashboard works!</p>
+<div class="dashboard-layout">
+  
+  <!-- SIDEBAR: Profile & Navigation -->
+  <aside class="sidebar">
+    <div class="profile-card">
+      <div class="avatar">🏪</div>
+      <h3 class="shop-name">{{ vendorProfile.shop_name }}</h3>
+      <p class="email">{{ userEmail }}</p>
+      
+      <div class="location-badge">
+        📍 {{ vendorProfile.locality }} - {{ vendorProfile.pincode }}
+      </div>
+
+      <div class="score-box">
+        <span class="score-label">Platform Score</span>
+        <strong class="score-value">{{ vendorProfile.platform_score }} <small>/ 10</small></strong>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <a href="#catalogue" class="nav-item active">📦 Product Catalogue</a>
+      <a href="#reviews" class="nav-item">⭐ Customer Reviews</a>
+      <a href="#demand" class="nav-item">📊 Area Demand Poll</a>
+    </nav>
+    
+    <button class="logout-btn" (click)="logout()">🚪 Logout</button>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <header class="top-header">
+      <h2>Vendor Dashboard</h2>
+      <p class="subtitle">Manage your stock, orders, and shop performance.</p>
+    </header>
+
+    <!-- SECTION: Product Catalogue -->
+    <section id="catalogue" class="content-card">
+      <div class="card-header">
+        <h3>Add New Product</h3>
+      </div>
+      
+      <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="inline-form">
+        <div class="form-group">
+          <input type="text" formControlName="name" placeholder="E.g., Tomato, Bread" required>
+        </div>
+        <div class="form-group">
+          <select formControlName="unit">
+            <option value="KG">Kilogram (KG)</option>
+            <option value="LITRE">Litre</option>
+            <option value="PIECE">Piece</option>
+            <option value="DOZEN">Dozen</option>
+            <option value="GRAM">Gram</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <input type="number" formControlName="base_price" placeholder="Price (₹)" required>
+        </div>
+        <button type="submit" class="btn-primary" [disabled]="productForm.invalid">+ Add</button>
+      </form>
+
+      <hr class="divider">
+
+      <div class="card-header">
+        <h3>My Permanent Catalogue</h3>
+      </div>
+      
+      <div class="product-grid">
+        @if (products.length === 0) {
+          <p class="empty-state">Your catalogue is empty. Add your first product above.</p>
+        } @else {
+          @for (product of products; track product.id) {
+            <div class="product-item">
+              <div class="product-details">
+                <span class="product-name">{{ product.name }}</span>
+                <span class="product-price">₹{{ product.base_price }} / {{ product.unit }}</span>
+              </div>
+              <button class="btn-danger" (click)="deleteProduct(product.id)">Delete</button>
+            </div>
+          }
+        }
+      </div>
+    </section>
+
+    <!-- SECTION: Customer Reviews  -->
+    <section id="reviews" class="content-card mt-4">
+      <div class="card-header">
+        <h3>Recent Customer Reviews</h3>
+        <span class="badge">0 Reviews</span>
+      </div>
+      <p class="empty-state">Verified customer reviews will appear here once orders are completed.</p>
+    </section>
+
+  </main>
+</div>

@@ -7,7 +7,7 @@ export const vendorGuard: CanActivateFn = (route, state) => {
   const role = localStorage.getItem('role'); 
 
   if (token && role === 'VENDOR') {
-    return true; // Let them pass
+    return true; 
   }
   
   router.navigate(['/login']);
