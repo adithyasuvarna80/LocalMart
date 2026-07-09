@@ -26,6 +26,8 @@ class Vendor(models.Model):
         ('GROCERY', 'Grocery'),
     )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='vendor_profile')
+
+    
     
 
     shop_name = models.CharField(max_length=255, null=True, blank=True)

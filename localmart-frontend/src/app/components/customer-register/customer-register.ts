@@ -13,7 +13,7 @@ export class CustomerRegisterComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
 
-  // Capturing the exact fields required for locality filtering
+
   customerForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],

@@ -1,4 +1,32 @@
-<div class="dashboard-layout">
+<!-- MANDATORY DAILY STOCK GATE -->
+@if (needsStockUpdate) {
+  <div class="stock-gate-container">
+    <div class="stock-gate-card">
+      <h2>Good Morning! 🌅</h2>
+      <p>Please confirm your daily stock quantities before accessing your dashboard. We've pre-filled yesterday's numbers to save you time.</p>
+      
+      <div class="stock-list">
+        @for (item of dailyStock; track item.id; let i = $index) {
+          <div class="stock-row">
+            <div class="item-info">
+              <strong>{{ item.product_name }}</strong>
+            </div>
+            <div class="item-input">
+              <input type="number" 
+                     [value]="item.quantity" 
+                     (input)="onQuantityChange(i, $event)" 
+                     min="0" step="0.5">
+              <span>{{ item.unit }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <button class="btn-primary full-width mt-4" (click)="submitStock()">Confirm Stock & Enter Shop</button>
+    </div>
+  </div>
+}@else{
+  <div class="dashboard-layout">
   
   <!-- SIDEBAR: Profile & Navigation -->
   <aside class="sidebar">
@@ -32,6 +60,46 @@
       <h2>Vendor Dashboard</h2>
       <p class="subtitle">Manage your stock, orders, and shop performance.</p>
     </header>
+        <!-- SECTION: Today's Live Stock -->
+    <section id="live-stock" class="content-card mt-4">
+      <div class="card-header">
+        <h3>Today's Live Stock</h3>
+        <button class="btn-danger" (click)="toggleShopClosed()">
+          {{ isClosedToday ? 'Shop is Closed Today' : 'Mark Shop Closed Today' }}
+        </button>
+      </div>
+      
+      <div class="stock-list">
+        @if (dailyStock.length === 0) {
+          <p class="empty-state">No stock available for today. Add products to your catalogue below first.</p>
+        } @else {
+          @for (item of dailyStock; track item.id; let i = $index) {
+            <div class="stock-row">
+              <div class="item-info">
+                <strong>{{ item.product_name }}</strong>
+                
+                <!-- Automated Sold Out Badge -->
+                @if (item.quantity == 0) {
+                  <span class="badge-danger ml-2">Sold Out</span>
+                }
+              </div>
+              <div class="item-input">
+                <input type="number" 
+                       [value]="item.quantity" 
+                       (input)="onQuantityChange(i, $event)" 
+                       min="0" step="0.5">
+                <span>{{ item.unit }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <button class="btn-primary mt-4" (click)="saveLiveStock()" [disabled]="dailyStock.length === 0">
+        💾 Save Live Stock Updates
+      </button>
+    </section>
+
 
     <!-- SECTION: Product Catalogue -->
     <section id="catalogue" class="content-card">
@@ -92,3 +160,5 @@
 
   </main>
 </div>
+}
+

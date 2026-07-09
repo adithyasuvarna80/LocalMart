@@ -15,6 +15,12 @@ export class VendorDashboard implements OnInit {
   private shopService = inject(ShopService);
   private router = inject(Router);
    private cdr = inject(ChangeDetectorRef);
+
+  needsStockUpdate: boolean = true; 
+  dailyStock: any[] = [];
+
+  isClosedToday: boolean = false;
+
   products: any[] = [];
   
   vendorProfile: any = {
@@ -39,6 +45,67 @@ export class VendorDashboard implements OnInit {
     this.loadProfile(); 
   }
 
+  saveLiveStock() {
+    this.shopService.updateDailyStock(this.dailyStock).subscribe({
+      next: (res) => {
+        alert('Live stock updated successfully!');
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        alert('Failed to update live stock.');
+        console.error(err);
+      }
+    });
+  }
+
+  // NEW: Function to toggle shop closed status
+  toggleShopClosed() {
+   this.shopService.toggleShopClosed().subscribe({
+      next: (res) => {
+        this.isClosedToday = res.is_closed_today; // <-- Instantly update the UI button
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        alert('Failed to update shop status.');
+        console.error(err);
+      }
+    });
+  }
+
+
+   loadDailyStock() {
+    this.shopService.getDailyStock().subscribe({
+      next: (data) => {
+        this.dailyStock = data;
+        // If the vendor has no products in their catalogue, unlock the dashboard immediately
+        if (this.dailyStock.length === 0) {
+          this.needsStockUpdate = false;
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load daily stock', err)
+    });
+  }
+
+  // NEW: Update quantity dynamically as the vendor types
+  onQuantityChange(index: number, event: any) {
+    this.dailyStock[index].quantity = event.target.value;
+  }
+
+  // NEW: Submit the stock and UNLOCK the dashboard!
+  submitStock() {
+    this.shopService.updateDailyStock(this.dailyStock).subscribe({
+      next: (res) => {
+        this.needsStockUpdate = false; // This instantly hides the gate and shows the dashboard
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        alert('Failed to update stock. Please try again.');
+        console.error(err);
+      }
+    });
+  }
+
    loadProducts() {
     this.shopService.getProducts().subscribe({
       next: (data) => {
@@ -56,6 +123,7 @@ export class VendorDashboard implements OnInit {
       next: (data) => {
         this.vendorProfile = data;
         this.userEmail = data.email; 
+        this.isClosedToday = data.is_closed_today; 
         this.cdr.detectChanges(); 
       },
       error: (err) => console.error('Failed to load profile', err)

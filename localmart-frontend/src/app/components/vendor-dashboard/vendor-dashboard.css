@@ -227,3 +227,85 @@
 .mt-4 {
   margin-top: 20px;
 }
+
+
+/* Stock Gate Overlay */
+.stock-gate-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #2c3e50; /* Dark background to block out the app */
+}
+
+.stock-gate-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.stock-gate-card h2 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.stock-list {
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.stock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.item-info strong {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.item-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.item-input input {
+  width: 80px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.full-width {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1rem;
+}
+
+.badge-danger {
+  background: #dc3545;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.ml-2 {
+  margin-left: 10px;
+}

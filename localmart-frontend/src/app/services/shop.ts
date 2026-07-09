@@ -6,6 +6,8 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class ShopService {
+
+
   private http = inject(HttpClient);
   private apiUrl = 'http://localhost:8000/api/shop'; // Base API URL
 
@@ -26,4 +28,19 @@ export class ShopService {
   getVendorProfile(): Observable<any> {
     return this.http.get(`${this.apiUrl}/profile/`);
   }
+
+  getDailyStock(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/daily-stock/`);
+  }
+
+  
+  updateDailyStock(stockData: any[]): Observable<any> {
+    return this.http.post(`${this.apiUrl}/daily-stock/`, stockData);
+  }
+
+  toggleShopClosed(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/toggle-closed/`, {});
+  }
 }
+
+
