@@ -9,7 +9,7 @@ export class ShopService {
 
 
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8000/api/shop'; // Base API URL
+  private apiUrl = 'http://localhost:8000/api/shop'; 
 
   getProducts(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/products/`);
@@ -40,6 +40,22 @@ export class ShopService {
 
   toggleShopClosed(): Observable<any> {
     return this.http.post(`${this.apiUrl}/toggle-closed/`, {});
+  }
+
+  getLocalShops(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/local-shops/`);
+  }
+
+   placeOrder(orderData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/orders/place/`, orderData);
+  }
+
+  getOrders(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/orders/`);
+  }
+
+  getCustomerProfile(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/customer-profile/`);
   }
 }
 

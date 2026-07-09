@@ -15,6 +15,7 @@ export class CustomerRegisterComponent {
 
 
   customerForm = this.fb.group({
+    name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
     pincode: ['', Validators.required],

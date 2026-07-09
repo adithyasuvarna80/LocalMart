@@ -1,1 +1,158 @@
-<p>customer-dashboard works!</p>
+<div class="dashboard-layout">
+  
+  <!-- LEFT SIDEBAR: Profile, Cart & Orders -->
+  <aside class="sidebar">
+    
+    <!-- Customer Profile Card -->
+    @if (customerProfile) {
+      <div class="profile-card">
+        <div class="avatar">👤</div>
+        <h3 class="shop-name">{{ customerProfile.name }}</h3>
+        <p class="email">{{ customerProfile.email }}</p>
+        <span class="location-badge">📍 {{ customerProfile.area_name }} ({{ customerProfile.pincode }})</span>
+      </div>
+    }
+
+    <!-- Shopping Cart -->
+    <div class="cart-wrapper">
+      <h3>🛒 Your Cart</h3>
+      @if (cart.length === 0) {
+        <p class="empty-state text-sm">Your cart is empty.</p>
+      } @else {
+        <p class="cart-shop-name">Ordering from: <strong>{{ cartVendorName }}</strong></p>
+        
+        <select [(ngModel)]="orderType" class="full-width mb-3 order-type-select">
+          <option value="DELIVERY">🏠 Home Delivery</option>
+          <option value="PICKUP">🏬 Store Pickup</option>
+        </select>
+
+        <ul class="cart-list">
+          @for (c of cart; track c.product) {
+            <li class="cart-item">
+              <span>{{ c.cartQty }}x {{ c.product_name }}</span>
+              <span>₹{{ c.price * c.cartQty }}</span>
+            </li>
+          }
+        </ul>
+
+        <div class="cart-totals mt-3">
+          <div class="total-row">
+            <span>Subtotal:</span>
+            <span>₹{{ subtotal }}</span>
+          </div>
+          
+          @if (orderType === 'DELIVERY') {
+            <div class="total-row delivery-row">
+              <span>Delivery Fee:</span>
+              @if (subtotal >= freeDeliveryThreshold) {
+                <span class="free-delivery">FREE (Over ₹{{ freeDeliveryThreshold }})</span>
+              } @else {
+                <span>₹{{ deliveryFee }}</span>
+              }
+            </div>
+          }
+          
+          <div class="total-row grand-total mt-2">
+            <span>Total to Pay:</span>
+            <span>₹{{ totalAmount }}</span>
+          </div>
+        </div>
+
+        <button class="btn-primary full-width mt-3" (click)="checkout()">Place Order</button>
+        <button class="btn-danger full-width mt-2" (click)="clearCart()">Clear Cart</button>
+      }
+    </div>
+
+    <!-- Order History -->
+    <div class="orders-wrapper mt-3">
+      <h3>📦 Recent Orders</h3>
+      @if (orders.length === 0) {
+        <p class="empty-state text-sm">No orders yet.</p>
+      } @else {
+        <div class="order-list">
+          @for (order of orders; track order.id) {
+            <div class="history-item">
+              <div class="history-header">
+                <strong>{{ order.vendor_name }}</strong>
+                <span class="status-badge" [class]="order.status.toLowerCase()">{{ order.status }}</span>
+              </div>
+              <p class="history-meta">{{ order.order_type }} • ₹{{ order.total_amount }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT: Shops Grid -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-titles">
+        <h2>Your Local Neighbourhood 🏘️</h2>
+        <p class="subtitle">Showing shops registered in your pincode.</p>
+      </div>
+      <button class="btn-danger logout-btn" (click)="logout()">Logout</button>
+    </header>
+
+    @if (isLoading) {
+      <p class="loading-text">Finding local shops near you...</p>
+    } @else if (shops.length === 0) {
+      <div class="empty-state content-card">
+        <h3>No shops found 🏜️</h3>
+      </div>
+    } @else {
+      <div class="shop-grid">
+        @for (shop of shops; track shop.id) {
+          <div class="shop-card content-card" [class.shop-closed]="shop.is_closed_today">
+            <div class="shop-header">
+              <div>
+                <h3>{{ shop.shop_name }}</h3>
+                <span class="category-badge">{{ shop.category }}</span>
+              </div>
+              <div class="score-badge">⭐ {{ shop.platform_score }}</div>
+            </div>
+
+            <p class="shop-meta">
+              Delivery: ₹{{ shop.delivery_fee }} (Free over ₹{{ shop.free_delivery_threshold }})
+            </p>
+
+            @if (shop.is_closed_today) {
+              <div class="closed-banner">Shop is Closed Today</div>
+            } @else {
+              <div class="stock-section">
+                <h4>Available Today</h4>
+                @if (shop.today_stock.length === 0) {
+                  <p class="empty-stock">Vendor hasn't updated stock today.</p>
+                } @else {
+                  <ul class="stock-list">
+                    @for (item of shop.today_stock; track item.id) {
+                      <li class="stock-item">
+                        <div class="item-details">
+                          <span class="item-name">{{ item.product_name }}</span>
+                          <span class="item-price">₹{{ item.base_price }}/{{ item.unit }}</span>
+                        </div>
+                        
+                        <div class="item-action">
+                          @if (item.is_sold_out) {
+                            <span class="badge-danger">Sold Out</span>
+                          } @else {
+                            <span class="item-qty">{{ item.quantity }} left</span>
+                            
+                            <!-- THE NEW QUANTITY SELECTOR -->
+                            <input type="number" class="qty-input" [(ngModel)]="item.selectedQty" min="1" [max]="item.quantity">
+                            
+                            <button class="btn-primary btn-sm ml-2" (click)="addToCart(shop, item)">Add</button>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </main>
+</div>

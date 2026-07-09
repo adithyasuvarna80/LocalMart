@@ -5,6 +5,7 @@
   <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
     <!-- Account Details -->
     <h3>Account Details</h3>
+    <input formControlName="name" placeholder="Full Name">
     <input type="email" formControlName="email" placeholder="Email Address" required>
     <input type="password" formControlName="password" placeholder="Password" required>
 

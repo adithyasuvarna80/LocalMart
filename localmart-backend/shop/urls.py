@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ProductListCreateView, ProductDetailView, VendorProfileView, DailyStockManageView,ToggleShopClosedView 
+from .views import ProductListCreateView, ProductDetailView, VendorProfileView, DailyStockManageView,ToggleShopClosedView,LocalShopsView ,PlaceOrderView, OrderListView ,CustomerProfileView
 
 urlpatterns = [
     path('products/', ProductListCreateView.as_view(), name='product-list-create'),
@@ -9,4 +9,12 @@ urlpatterns = [
     # NEW: Endpoint for the Daily Stock Gate
     path('daily-stock/', DailyStockManageView.as_view(), name='daily-stock'),
     path('toggle-closed/', ToggleShopClosedView.as_view(), name='toggle-closed'),
+
+    
+    path('local-shops/', LocalShopsView.as_view(), name='local-shops'),
+
+     path('orders/', OrderListView.as_view(), name='order-list'),
+    path('orders/place/', PlaceOrderView.as_view(), name='place-order'),
+
+     path('customer-profile/', CustomerProfileView.as_view(), name='customer-profile'),
 ]

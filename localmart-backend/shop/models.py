@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from authentication.models import Vendor
+from authentication.models import Vendor, Customer 
 
 class Product(models.Model):
     UNIT_CHOICES = (
@@ -19,7 +19,7 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name} - {self.vendor.user.email}"
 
-# NEW: The Daily Stock Tracker
+
 class DailyStock(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='daily_stock')
     date = models.DateField(default=timezone.now)
@@ -27,11 +27,11 @@ class DailyStock(models.Model):
     is_sold_out = models.BooleanField(default=False)
 
     class Meta:
-        # Ensures a product can only have exactly ONE stock entry per day
+      
         unique_together = ('product', 'date')
 
     def save(self, *args, **kwargs):
-        # Automated Business Logic: If quantity drops to 0, mark as sold out automatically!
+     
         if self.quantity <= 0:
             self.is_sold_out = True
         else:
@@ -40,3 +40,33 @@ class DailyStock(models.Model):
 
     def __str__(self):
         return f"{self.product.name} | {self.date} | Qty: {self.quantity}"
+    
+
+class Order(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('READY', 'Ready / Out for Delivery'),
+        ('COMPLETED', 'Completed'),
+        ('REJECTED', 'Rejected'),
+    )
+    ORDER_TYPE_CHOICES = (
+        ('PICKUP', 'Pickup'),
+        ('DELIVERY', 'Home Delivery'),
+    )
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    order_type = models.CharField(max_length=20, choices=ORDER_TYPE_CHOICES)
+    
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    delivery_fee = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)

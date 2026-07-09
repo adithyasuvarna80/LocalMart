@@ -43,6 +43,7 @@ export class VendorDashboard implements OnInit {
   ngOnInit() {
     this.loadProducts();
     this.loadProfile(); 
+    this.loadDailyStock();
   }
 
   saveLiveStock() {
@@ -58,11 +59,11 @@ export class VendorDashboard implements OnInit {
     });
   }
 
-  // NEW: Function to toggle shop closed status
+  
   toggleShopClosed() {
    this.shopService.toggleShopClosed().subscribe({
       next: (res) => {
-        this.isClosedToday = res.is_closed_today; // <-- Instantly update the UI button
+        this.isClosedToday = res.is_closed_today;
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -77,7 +78,7 @@ export class VendorDashboard implements OnInit {
     this.shopService.getDailyStock().subscribe({
       next: (data) => {
         this.dailyStock = data;
-        // If the vendor has no products in their catalogue, unlock the dashboard immediately
+       
         if (this.dailyStock.length === 0) {
           this.needsStockUpdate = false;
         }
@@ -87,16 +88,17 @@ export class VendorDashboard implements OnInit {
     });
   }
 
-  // NEW: Update quantity dynamically as the vendor types
+ 
   onQuantityChange(index: number, event: any) {
-    this.dailyStock[index].quantity = event.target.value;
+    this.dailyStock[index].quantity = Number(event.target.value);
   }
 
-  // NEW: Submit the stock and UNLOCK the dashboard!
+
+ 
   submitStock() {
     this.shopService.updateDailyStock(this.dailyStock).subscribe({
       next: (res) => {
-        this.needsStockUpdate = false; // This instantly hides the gate and shows the dashboard
+        this.needsStockUpdate = false; 
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -136,6 +138,7 @@ export class VendorDashboard implements OnInit {
         next: (res) => {
           this.products.push(res);
           this.productForm.reset({ unit: 'KG' });
+          this.loadDailyStock(); 
         },
         error: (err) => console.error(err)
       });

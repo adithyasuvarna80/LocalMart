@@ -11,8 +11,7 @@ export const routes: Routes = [
   { path: 'register/vendor', component: VendorRegisterComponent },
   { path: 'register/customer', component: CustomerRegisterComponent },
   
-  // Protected Routes (We will build these dashboards in the next module)
-  // The 'canActivate' array is what enforces the role guards!
+  
   { 
     path: 'vendor', 
     loadComponent: () => import('./components/vendor-dashboard/vendor-dashboard').then(m => m.VendorDashboard),
@@ -24,6 +23,6 @@ export const routes: Routes = [
     canActivate: [customerGuard]
   },
 
-  // Default Route
+ 
   { path: '', redirectTo: '/login', pathMatch: 'full' }
 ];
