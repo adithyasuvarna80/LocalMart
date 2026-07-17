@@ -165,4 +165,14 @@ export class CustomerDashboard implements OnInit {
     localStorage.clear();
     this.router.navigate(['/login']);
   }
+
+    confirmDelivery(orderId: number) {
+    this.shopService.confirmDelivery(orderId).subscribe({
+      next: (res) => {
+        alert('Thank you for confirming your delivery!');
+        this.loadOrders(); 
+      },
+      error: (err) => console.error(err)
+    });
+  }
 }

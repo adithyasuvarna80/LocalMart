@@ -147,6 +147,41 @@
           }
         }
       </div>
+      <!-- LIVE ORDERS BOARD -->
+    <div class="content-card mt-4">
+      <div class="card-header">
+        <h3>Live Orders 📦</h3>
+      </div>
+
+      @if (orders.length === 0) {
+        <p class="empty-state">No orders yet.</p>
+      } @else {
+        <div class="product-grid">
+          @for (order of orders; track order.id) {
+            <div class="product-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+              
+              <div style="display: flex; justify-content: space-between; width: 100%;">
+                <strong style="font-size: 1.1rem;">#{{ order.id }} - {{ order.order_type }}</strong>
+                <span style="font-weight: bold; color: #007bff;">{{ order.status }}</span>
+              </div>
+              <p style="margin: 0; color: #666;">Subtotal: ₹{{ order.subtotal }} | Total: ₹{{ order.total_amount }}</p>
+
+              <!-- Action Buttons based on Status -->
+              <div style="display: flex; gap: 10px; margin-top: 10px;">
+                @if (order.status === 'PENDING') {
+                  <button class="btn-primary" style="padding: 5px 10px;" (click)="updateOrderStatus(order.id, 'ACCEPTED')">Accept</button>
+                  <button class="btn-danger" (click)="updateOrderStatus(order.id, 'REJECTED')">Reject</button>
+                }
+                @if (order.status === 'ACCEPTED') {
+                  <button class="btn-primary" style="padding: 5px 10px;" (click)="updateOrderStatus(order.id, 'READY')">Mark as Ready / Dispatched</button>
+                }
+              </div>
+              
+            </div>
+          }
+        </div>
+      }
+    </div>
     </section>
 
     <!-- SECTION: Customer Reviews  -->

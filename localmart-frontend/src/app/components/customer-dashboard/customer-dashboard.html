@@ -77,6 +77,11 @@
                 <span class="status-badge" [class]="order.status.toLowerCase()">{{ order.status }}</span>
               </div>
               <p class="history-meta">{{ order.order_type }} • ₹{{ order.total_amount }}</p>
+              
+              <!-- NEW: Customer Confirmation Button -->
+              @if (order.status === 'READY') {
+                <button class="btn-primary btn-sm mt-2 full-width" (click)="confirmDelivery(order.id)">I Received This ✅</button>
+              }
             </div>
           }
         </div>

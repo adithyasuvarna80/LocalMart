@@ -18,6 +18,7 @@ export class VendorDashboard implements OnInit {
 
   needsStockUpdate: boolean = true; 
   dailyStock: any[] = [];
+   orders: any[] = [];
 
   isClosedToday: boolean = false;
 
@@ -44,6 +45,7 @@ export class VendorDashboard implements OnInit {
     this.loadProducts();
     this.loadProfile(); 
     this.loadDailyStock();
+    this.loadOrders(); 
   }
 
   saveLiveStock() {
@@ -75,23 +77,36 @@ export class VendorDashboard implements OnInit {
 
 
    loadDailyStock() {
-    this.shopService.getDailyStock().subscribe({
-      next: (data) => {
-        this.dailyStock = data;
-       
-        if (this.dailyStock.length === 0) {
+  this.shopService.getDailyStock().subscribe({
+    next: (data) => {
+      this.dailyStock = data;
+
+      // If the vendor has no products, bypass the gate
+      if (this.dailyStock.length === 0) {
+        this.needsStockUpdate = false;
+      } else {
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+
+        // Get the first stock item's date
+        const stockDate = this.dailyStock[0]?.date;
+
+        if (stockDate === today) {
           this.needsStockUpdate = false;
         }
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Failed to load daily stock', err)
-    });
-  }
+      }
+
+      this.cdr.detectChanges();
+    },
+    error: (err) => console.error('Failed to load daily stock', err)
+  });
+}
 
  
   onQuantityChange(index: number, event: any) {
-    this.dailyStock[index].quantity = Number(event.target.value);
-  }
+  // Parse the string into a float so Django receives an actual number!
+  this.dailyStock[index].quantity = parseFloat(event.target.value) || 0;
+}
 
 
  
@@ -157,6 +172,24 @@ export class VendorDashboard implements OnInit {
         }
       });
     }
+  }
+   loadOrders() {
+    this.shopService.getOrders().subscribe({
+      next: (data) => {
+        this.orders = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load orders', err)
+    });
+  }
+
+  updateOrderStatus(orderId: number, status: string) {
+    this.shopService.updateOrderStatus(orderId, status).subscribe({
+      next: (res) => {
+        this.loadOrders(); // Refresh the board instantly
+      },
+      error: (err) => alert('Failed to update order status.')
+    });
   }
 
   logout() {

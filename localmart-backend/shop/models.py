@@ -32,7 +32,7 @@ class DailyStock(models.Model):
 
     def save(self, *args, **kwargs):
      
-        if self.quantity <= 0:
+        if float(self.quantity) <= 0:
             self.is_sold_out = True
         else:
             self.is_sold_out = False

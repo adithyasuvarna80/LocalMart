@@ -34,7 +34,7 @@ class VendorProfileView(generics.RetrieveAPIView):
     def get_object(self):
         return self.request.user.vendor_profile
 
-# NEW: The Automated Daily Stock View
+
 class DailyStockManageView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -149,3 +149,51 @@ class CustomerProfileView(APIView):
             serializer = CustomerProfileSerializer(request.user.customer_profile)
             return Response(serializer.data)
         return Response({"error": "Not a customer"}, status=400)
+    
+class UpdateOrderStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if not hasattr(request.user, 'vendor_profile'):
+            return Response({"error": "Only vendors can update order status."}, status=403)
+
+        try:
+            order = Order.objects.get(pk=pk, vendor=request.user.vendor_profile)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=404)
+
+        new_status = request.data.get('status')
+        current_status = order.status
+
+        # Enforce valid transitions
+        valid_transitions = {
+            'PENDING': ['ACCEPTED', 'REJECTED'],
+            'ACCEPTED': ['READY'],
+            'READY': ['COMPLETED']
+        }
+
+        if new_status not in valid_transitions.get(current_status, []):
+            return Response({"error": f"Invalid transition from {current_status} to {new_status}"}, status=400)
+
+        order.status = new_status
+        order.save()
+        return Response({"message": "Order status updated successfully", "status": order.status})
+    
+class CustomerConfirmDeliveryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if not hasattr(request.user, 'customer_profile'):
+            return Response({"error": "Only customers can confirm delivery."}, status=403)
+
+        try:
+            order = Order.objects.get(pk=pk, customer=request.user.customer_profile)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=404)
+
+        if order.status != 'READY':
+            return Response({"error": "Order must be READY to be confirmed."}, status=400)
+
+        order.status = 'COMPLETED'
+        order.save()
+        return Response({"message": "Delivery confirmed successfully", "status": order.status})

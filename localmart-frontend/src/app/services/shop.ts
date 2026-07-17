@@ -57,6 +57,14 @@ export class ShopService {
   getCustomerProfile(): Observable<any> {
     return this.http.get(`${this.apiUrl}/customer-profile/`);
   }
+
+   updateOrderStatus(orderId: number, status: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/orders/${orderId}/status/`, { status });
+  }
+
+  confirmDelivery(orderId: number): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/orders/${orderId}/confirm/`, {});
+  }
 }
 
 
