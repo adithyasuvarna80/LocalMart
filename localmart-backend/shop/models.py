@@ -55,6 +55,7 @@ class Order(models.Model):
         ('DELIVERY', 'Home Delivery'),
     )
 
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
@@ -64,6 +65,8 @@ class Order(models.Model):
     delivery_fee = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    delivery_address = models.TextField(blank=True, null=True) 
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -86,6 +89,10 @@ class DailyVote(models.Model):
     poll_item = models.ForeignKey(PollItem, on_delete=models.CASCADE, related_name='daily_votes')
     date = models.DateField(default=timezone.now)
     vote_count = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('pincode', 'poll_item', 'date')
+
 
 class UserVote(models.Model):
     """Tracks what a specific user voted for today to prevent double-voting."""

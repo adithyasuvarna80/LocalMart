@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import ProductListCreateView, ProductDetailView, VendorProfileView, DailyStockManageView,ToggleShopClosedView,LocalShopsView ,PlaceOrderView, OrderListView ,CustomerProfileView
 from .views import UpdateOrderStatusView, CustomerConfirmDeliveryView,CustomerPollView, VendorPollChartDataView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('products/', ProductListCreateView.as_view(), name='product-list-create'),
@@ -25,5 +26,7 @@ urlpatterns = [
 
      path('poll/', CustomerPollView.as_view(), name='customer-poll'),
     path('poll/chart/', VendorPollChartDataView.as_view(), name='vendor-poll-chart'),
+
+    path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
 ]

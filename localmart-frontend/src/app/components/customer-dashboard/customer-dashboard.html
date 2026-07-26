@@ -95,7 +95,8 @@
         @for (item of pollItems; track item.id) {
           <label style="background: #f8f9fa; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; gap: 10px; border: 1px solid #eee;">
             <input type="checkbox" (change)="togglePollItem(item.id, $event)">
-            <span><strong>{{ item.name }}</strong> <small style="color: #888;">({{ item.category }})</small></span>
+            <span><strong>{{ item.name }}</strong> <small style="color: #888;">({{ item.vote_count }} others want this)</small></span>
+
           </label>
         }
       </div>
@@ -129,7 +130,9 @@
                 <span class="category-badge">{{ shop.category }}</span>
               </div>
               <div class="score-badge">⭐ {{ shop.platform_score }}</div>
+              
             </div>
+            <p class="shop-meta">Last updated: {{ shop.stock_last_updated | date:'short' }}</p>
 
             <p class="shop-meta">
               Delivery: ₹{{ shop.delivery_fee }} (Free over ₹{{ shop.free_delivery_threshold }})

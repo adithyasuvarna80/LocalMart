@@ -43,6 +43,10 @@
         <span class="score-label">Platform Score</span>
         <strong class="score-value">{{ vendorProfile.platform_score }} <small>/ 10</small></strong>
       </div>
+       <div class="score-box mt-2">
+        <span class="score-label">Demerit Points</span>
+        <span class="score-value" style="color: #dc3545;">{{ vendorProfile.demerit_points || 0 }}</span>
+      </div>
     </div>
 
     <nav class="side-nav">
@@ -164,6 +168,7 @@
                 <strong style="font-size: 1.1rem;">#{{ order.id }} - {{ order.order_type }}</strong>
                 <span style="font-weight: bold; color: #007bff;">{{ order.status }}</span>
               </div>
+              <p><strong>Customer:</strong> {{ order.customer_name }}</p>
               <p style="margin: 0; color: #666;">Subtotal: ₹{{ order.subtotal }} | Total: ₹{{ order.total_amount }}</p>
 
               <!-- Action Buttons based on Status -->

@@ -56,6 +56,7 @@ class CustomerShopSerializer(serializers.ModelSerializer):
         today = timezone.now().date()
         
         stock = DailyStock.objects.filter(product__vendor=obj, date=today)
+        stock_last_updated = serializers.DateTimeField(read_only=True) 
         return DailyStockSerializer(stock, many=True).data
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -72,6 +73,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'vendor', 'vendor_name', 'status', 'order_type', 'subtotal', 'delivery_fee', 'total_amount', 'created_at', 'items']
+        customer_name = serializers.CharField(source='customer.user.first_name', read_only=True)
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
@@ -102,6 +104,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class CustomerProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     name = serializers.CharField(source='user.first_name', read_only=True)
+    demerit_points = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Customer
@@ -113,7 +116,7 @@ class PollItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'category']
 
 class DailyVoteSerializer(serializers.ModelSerializer):
-    # This automatically grabs the text name of the item (e.g., "Tomatoes")
+    
     item_name = serializers.CharField(source='poll_item.name', read_only=True)
 
     class Meta:

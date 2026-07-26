@@ -15,10 +15,12 @@ export class CustomerDashboard implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
+
   customerProfile: any = null; 
   shops: any[] = [];
   orders: any[] = []; 
   isLoading: boolean = true;
+  deliveryAddress: string = ''; 
 
   cart: any[] = [];
   cartVendorId: number | null = null;
@@ -138,18 +140,27 @@ export class CustomerDashboard implements OnInit {
   checkout() {
     if (this.cart.length === 0) return;
 
-    const orderData = {
-      vendor: this.cartVendorId,
-      order_type: this.orderType,
-      subtotal: this.subtotal,
-      delivery_fee: this.finalDeliveryFee,
-      total_amount: this.totalAmount,
-      items: this.cart.map(item => ({
-        product: item.product,
-        quantity: item.cartQty,
-        price: item.price
-      }))
-    };
+    if (this.orderType === 'DELIVERY' && !this.deliveryAddress.trim()) {
+   alert('Please enter a delivery address.');
+   return;
+}
+
+
+
+const orderData = {
+
+  vendor: this.cartVendorId,
+  order_type: this.orderType,
+  subtotal: this.subtotal,
+  delivery_fee: this.finalDeliveryFee,
+  total_amount: this.totalAmount,
+  items: this.cart.map(item => ({
+    product: item.product,
+    quantity: item.cartQty,
+    price: item.price
+  }))
+};
+
 
     this.shopService.placeOrder(orderData).subscribe({
       next: (res) => {
@@ -165,9 +176,11 @@ export class CustomerDashboard implements OnInit {
     });
   }
 
-  logout() {
-    localStorage.clear();
-    this.router.navigate(['/login']);
+  logout() { 
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('role');
+    this.router.navigate(['/login']); 
   }
 
     confirmDelivery(orderId: number) {

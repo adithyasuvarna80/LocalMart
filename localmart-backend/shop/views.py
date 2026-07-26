@@ -88,6 +88,10 @@ class DailyStockManageView(APIView):
                 stock_entry.save() 
             except DailyStock.DoesNotExist:
                 continue
+
+        vendor = request.user.vendor_profile
+        vendor.stock_last_updated = timezone.now()
+        vendor.save()
                 
         return Response({"message": "Daily stock updated successfully!"})
     
@@ -210,8 +214,21 @@ class CustomerPollView(APIView):
     permission_classes = [AllowAny] 
 
     def get(self, request):
+        # Auto-detect area if logged in, otherwise default to 000000
+        pincode = '000000'
+        if request.user.is_authenticated and hasattr(request.user, 'customer_profile'):
+            pincode = request.user.customer_profile.pincode
+            
         items = PollItem.objects.all()
-        return Response(PollItemSerializer(items, many=True).data)
+        data = PollItemSerializer(items, many=True).data
+        today = timezone.now().date()
+        
+        # Attach live vote counts for this specific area
+        for item in data:
+            dv = DailyVote.objects.filter(poll_item_id=item['id'], pincode=pincode, date=today).first()
+            item['vote_count'] = dv.vote_count if dv else 0
+            
+        return Response(data)
 
     def post(self, request):
         pincode = request.data.get('pincode', '000000')
@@ -262,6 +279,11 @@ class VendorPollChartDataView(APIView):
             return Response({"error": "Only vendors can view chart data."}, status=403)
 
         today = timezone.now().date()
-       
-        votes = DailyVote.objects.filter(date=today).order_by('-vote_count')
+        # Grab the vendor's specific area
+        vendor_pincode = request.user.vendor_profile.pincode 
+        
+        # Filter strictly by the vendor's area
+        votes = DailyVote.objects.filter(date=today, pincode=vendor_pincode).order_by('-vote_count')
         return Response(DailyVoteSerializer(votes, many=True).data)
+
+
