@@ -65,6 +65,19 @@ export class ShopService {
   confirmDelivery(orderId: number): Observable<any> {
     return this.http.patch(`${this.apiUrl}/orders/${orderId}/confirm/`, {});
   }
+
+    getPollItems(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/poll/`);
+  }
+
+  submitPollVote(itemIds: number[], pincode: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/poll/`, { item_ids: itemIds, pincode: pincode });
+  }
+
+  getPollChartData(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/poll/chart/`);
+  }
+
 }
 
 

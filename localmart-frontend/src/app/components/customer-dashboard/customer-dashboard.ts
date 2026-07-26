@@ -27,10 +27,14 @@ export class CustomerDashboard implements OnInit {
   freeDeliveryThreshold: number = 0;
   orderType: string = 'DELIVERY'; 
 
+   pollItems: any[] = [];
+  selectedPollItems: Set<number> = new Set<number>();
+
   ngOnInit() {
     this.loadProfile();
     this.loadLocalShops();
     this.loadOrders();
+    this.loadPollItems();
   }
 
   loadProfile() {
@@ -173,6 +177,38 @@ export class CustomerDashboard implements OnInit {
         this.loadOrders(); 
       },
       error: (err) => console.error(err)
+    });
+  }
+
+   loadPollItems() {
+    this.shopService.getPollItems().subscribe({
+      next: (data) => {
+        this.pollItems = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load poll items', err)
+    });
+  }
+
+  togglePollItem(itemId: number, event: any) {
+    if (event.target.checked) {
+      this.selectedPollItems.add(itemId);
+    } else {
+      this.selectedPollItems.delete(itemId);
+    }
+  }
+
+  submitVote() {
+    if (this.selectedPollItems.size === 0) {
+      alert("Please select at least one item to vote!");
+      return;
+    }
+    const itemIds = Array.from(this.selectedPollItems);
+    const pincode = this.customerProfile ? this.customerProfile.pincode : '000000';
+    
+    this.shopService.submitPollVote(itemIds, pincode).subscribe({
+      next: (res) => alert('Your votes have been recorded! Thank you for participating.'),
+      error: (err) => alert('Failed to submit votes.')
     });
   }
 }

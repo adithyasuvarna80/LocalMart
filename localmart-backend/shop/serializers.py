@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Product, DailyStock
 from authentication.models import Vendor,Customer
-from .models import Product, DailyStock, Order, OrderItem
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -106,3 +106,16 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['name', 'email', 'pincode', 'area_name']
+
+class PollItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PollItem
+        fields = ['id', 'name', 'category']
+
+class DailyVoteSerializer(serializers.ModelSerializer):
+    # This automatically grabs the text name of the item (e.g., "Tomatoes")
+    item_name = serializers.CharField(source='poll_item.name', read_only=True)
+
+    class Meta:
+        model = DailyVote
+        fields = ['id', 'item_name', 'vote_count', 'pincode']

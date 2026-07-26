@@ -2,6 +2,7 @@ import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
+import Chart from 'chart.js/auto';
 
 @Component({
   selector: 'app-vendor-dashboard',
@@ -19,6 +20,7 @@ export class VendorDashboard implements OnInit {
   needsStockUpdate: boolean = true; 
   dailyStock: any[] = [];
    orders: any[] = [];
+   chart: any;
 
   isClosedToday: boolean = false;
 
@@ -46,6 +48,7 @@ export class VendorDashboard implements OnInit {
     this.loadProfile(); 
     this.loadDailyStock();
     this.loadOrders(); 
+    this.loadChartData();
   }
 
   saveLiveStock() {
@@ -76,51 +79,56 @@ export class VendorDashboard implements OnInit {
   }
 
 
-   loadDailyStock() {
-  this.shopService.getDailyStock().subscribe({
-    next: (data) => {
-      this.dailyStock = data;
-
-      // If the vendor has no products, bypass the gate
-      if (this.dailyStock.length === 0) {
-        this.needsStockUpdate = false;
-      } else {
-        // Get today's date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0];
-
-        // Get the first stock item's date
-        const stockDate = this.dailyStock[0]?.date;
-
-        if (stockDate === today) {
-          this.needsStockUpdate = false;
+    loadDailyStock() { 
+    this.shopService.getDailyStock().subscribe({ 
+      next: (data) => { 
+        this.dailyStock = data; 
+        
+        
+        if (this.dailyStock.length === 0) { 
+          this.needsStockUpdate = false; 
+        } 
+        
+        else {
+          const today = new Date().toISOString().split('T')[0];
+          const lastSubmit = localStorage.getItem('last_stock_submit'); 
+          
+        
+          if (lastSubmit === today) {
+            this.needsStockUpdate = false; 
+          }
         }
-      }
-
-      this.cdr.detectChanges();
-    },
-    error: (err) => console.error('Failed to load daily stock', err)
-  });
-}
+        
+        this.cdr.detectChanges(); 
+      }, 
+      error: (err) => console.error('Failed to load daily stock', err) 
+    }); 
+  }
 
  
   onQuantityChange(index: number, event: any) {
-  // Parse the string into a float so Django receives an actual number!
+ 
   this.dailyStock[index].quantity = parseFloat(event.target.value) || 0;
 }
 
 
  
-  submitStock() {
-    this.shopService.updateDailyStock(this.dailyStock).subscribe({
-      next: (res) => {
+  submitStock() { 
+    this.shopService.updateDailyStock(this.dailyStock).subscribe({ 
+      next: (res) => { 
         this.needsStockUpdate = false; 
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        alert('Failed to update stock. Please try again.');
-        console.error(err);
-      }
-    });
+        
+       
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem('last_stock_submit', today);
+        
+        this.cdr.detectChanges(); 
+      }, 
+      error: (err) => { 
+        alert('Failed to update stock. Please try again.'); 
+        console.error(err); 
+      } 
+    }); 
   }
 
    loadProducts() {
@@ -186,14 +194,52 @@ export class VendorDashboard implements OnInit {
   updateOrderStatus(orderId: number, status: string) {
     this.shopService.updateOrderStatus(orderId, status).subscribe({
       next: (res) => {
-        this.loadOrders(); // Refresh the board instantly
+        this.loadOrders(); 
       },
       error: (err) => alert('Failed to update order status.')
     });
   }
 
-  logout() {
-    localStorage.clear();
-    this.router.navigate(['/login']);
+   logout() { 
+    
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('role');
+    this.router.navigate(['/login']); 
+  }
+   loadChartData() {
+    this.shopService.getPollChartData().subscribe({
+      next: (data) => this.renderChart(data),
+      error: (err) => console.error('Failed to load chart data', err)
+    });
+  }
+
+  renderChart(data: any[]) {
+    const labels = data.map(item => item.item_name);
+    const votes = data.map(item => item.vote_count);
+
+    const canvas = document.getElementById('demandChart') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    
+    if (this.chart) this.chart.destroy();
+
+    this.chart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Area Votes Today',
+          data: votes,
+          backgroundColor: '#007bff',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
   }
 }

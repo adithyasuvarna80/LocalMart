@@ -12,6 +12,14 @@ from .models import Product, DailyStock
 from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer
 from .serializers import CustomerShopSerializer,CustomerProfileSerializer
 
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote
+from .serializers import (
+    ProductSerializer, VendorProfileSerializer, DailyStockSerializer, 
+    CustomerShopSerializer, CustomerProfileSerializer, OrderSerializer,
+    PollItemSerializer, DailyVoteSerializer
+)
+
 
 class ProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
@@ -165,7 +173,7 @@ class UpdateOrderStatusView(APIView):
         new_status = request.data.get('status')
         current_status = order.status
 
-        # Enforce valid transitions
+        
         valid_transitions = {
             'PENDING': ['ACCEPTED', 'REJECTED'],
             'ACCEPTED': ['READY'],
@@ -197,3 +205,63 @@ class CustomerConfirmDeliveryView(APIView):
         order.status = 'COMPLETED'
         order.save()
         return Response({"message": "Delivery confirmed successfully", "status": order.status})
+    
+class CustomerPollView(APIView):
+    permission_classes = [AllowAny] 
+
+    def get(self, request):
+        items = PollItem.objects.all()
+        return Response(PollItemSerializer(items, many=True).data)
+
+    def post(self, request):
+        pincode = request.data.get('pincode', '000000')
+        item_ids = request.data.get('item_ids', [])
+
+       
+        customer_profile = None
+        if request.user.is_authenticated and hasattr(request.user, 'customer_profile'):
+            customer_profile = request.user.customer_profile
+            
+        session_id = request.META.get('HTTP_X_SESSION_ID', 'guest_default_session')
+        today = timezone.now().date()
+
+        
+        if customer_profile:
+            old_votes = UserVote.objects.filter(customer=customer_profile, date=today)
+        else:
+            old_votes = UserVote.objects.filter(session_id=session_id, date=today)
+
+        for uv in old_votes:
+            for item in uv.voted_items.all():
+                dv = DailyVote.objects.filter(pincode=pincode, poll_item=item, date=today).first()
+                if dv and dv.vote_count > 0:
+                    dv.vote_count -= 1
+                    dv.save()
+        old_votes.delete()
+
+        
+        new_vote = UserVote.objects.create(customer=customer_profile, session_id=session_id, date=today)
+        for item_id in item_ids:
+            try:
+                item = PollItem.objects.get(id=item_id)
+                new_vote.voted_items.add(item)
+                dv, created = DailyVote.objects.get_or_create(pincode=pincode, poll_item=item, date=today)
+                dv.vote_count += 1
+                dv.save()
+            except PollItem.DoesNotExist:
+                pass
+
+        return Response({"message": "Votes recorded successfully!"})
+
+
+class VendorPollChartDataView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not hasattr(request.user, 'vendor_profile'):
+            return Response({"error": "Only vendors can view chart data."}, status=403)
+
+        today = timezone.now().date()
+       
+        votes = DailyVote.objects.filter(date=today).order_by('-vote_count')
+        return Response(DailyVoteSerializer(votes, many=True).data)

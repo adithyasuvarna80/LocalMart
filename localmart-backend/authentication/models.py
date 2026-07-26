@@ -22,6 +22,7 @@ class User(AbstractUser):
     ROLE_CHOICES = (
         ('VENDOR', 'Vendor'),
         ('CUSTOMER', 'Customer'),
+        ('ADMIN', 'Admin')
     )
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)

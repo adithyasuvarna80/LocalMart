@@ -70,3 +70,29 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class PollItem(models.Model):
+    """Master list of products customers can vote for."""
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+class DailyVote(models.Model):
+    """Tracks the total number of votes an item gets in a specific area today."""
+    pincode = models.CharField(max_length=20)
+    poll_item = models.ForeignKey(PollItem, on_delete=models.CASCADE, related_name='daily_votes')
+    date = models.DateField(default=timezone.now)
+    vote_count = models.IntegerField(default=0)
+
+class UserVote(models.Model):
+    """Tracks what a specific user voted for today to prevent double-voting."""
+   
+    customer = models.ForeignKey('authentication.Customer', on_delete=models.CASCADE, null=True, blank=True)
+   
+    session_id = models.CharField(max_length=255, null=True, blank=True) 
+    date = models.DateField(default=timezone.now)
+   
+    voted_items = models.ManyToManyField(PollItem)

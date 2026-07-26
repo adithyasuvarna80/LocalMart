@@ -176,11 +176,21 @@
                   <button class="btn-primary" style="padding: 5px 10px;" (click)="updateOrderStatus(order.id, 'READY')">Mark as Ready / Dispatched</button>
                 }
               </div>
+
               
             </div>
           }
         </div>
       }
+    </div>
+     <!-- VENDOR DEMAND CHART -->
+    <div class="content-card mt-4">
+      <div class="card-header">
+        <h3>📊 Live Area Demand</h3>
+      </div>
+      <div style="position: relative; height: 300px; width: 100%;">
+        <canvas id="demandChart"></canvas>
+      </div>
     </div>
     </section>
 

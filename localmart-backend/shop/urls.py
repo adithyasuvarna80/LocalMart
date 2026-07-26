@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import ProductListCreateView, ProductDetailView, VendorProfileView, DailyStockManageView,ToggleShopClosedView,LocalShopsView ,PlaceOrderView, OrderListView ,CustomerProfileView
-from .views import UpdateOrderStatusView, CustomerConfirmDeliveryView
+from .views import UpdateOrderStatusView, CustomerConfirmDeliveryView,CustomerPollView, VendorPollChartDataView
 
 urlpatterns = [
     path('products/', ProductListCreateView.as_view(), name='product-list-create'),
@@ -21,5 +21,9 @@ urlpatterns = [
 
       path('orders/<int:pk>/status/', UpdateOrderStatusView.as_view(), name='update-order-status'),
     path('orders/<int:pk>/confirm/', CustomerConfirmDeliveryView.as_view(), name='confirm-delivery'),
+
+
+     path('poll/', CustomerPollView.as_view(), name='customer-poll'),
+    path('poll/chart/', VendorPollChartDataView.as_view(), name='vendor-poll-chart'),
 
 ]

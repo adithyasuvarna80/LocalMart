@@ -87,6 +87,20 @@
         </div>
       }
     </div>
+    <div class="orders-wrapper mt-3">
+      <h3>📊 Today's Area Poll</h3>
+      <p class="text-sm" style="color: #666; margin-bottom: 10px;">Vote for what you need today!</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        @for (item of pollItems; track item.id) {
+          <label style="background: #f8f9fa; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; gap: 10px; border: 1px solid #eee;">
+            <input type="checkbox" (change)="togglePollItem(item.id, $event)">
+            <span><strong>{{ item.name }}</strong> <small style="color: #888;">({{ item.category }})</small></span>
+          </label>
+        }
+      </div>
+      <button class="btn-primary full-width mt-2" style="background: #28a745;" (click)="submitVote()">Submit Vote</button>
+    </div>
   </aside>
 
   <!-- MAIN CONTENT: Shops Grid -->
