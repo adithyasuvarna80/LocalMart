@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Product, DailyStock
 from authentication.models import Vendor,Customer
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,10 +14,11 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class VendorProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
+    demerit_points = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Vendor
-        fields = ['shop_name', 'locality', 'pincode', 'platform_score', 'email','is_closed_today']
+        fields = ['id', 'user', 'shop_name', 'category', 'locality', 'pincode', 'delivery_fee', 'free_delivery_threshold', 'is_closed_today', 'platform_score', 'email', 'demerit_points']
 
 
 class DailyStockSerializer(serializers.ModelSerializer):
@@ -43,13 +44,13 @@ class DailyStockSerializer(serializers.ModelSerializer):
 class CustomerShopSerializer(serializers.ModelSerializer):
  
     today_stock = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Vendor
-        fields = [
-            'id', 'shop_name', 'category', 'locality', 'delivery_fee', 
-            'free_delivery_threshold', 'is_closed_today', 'platform_score', 'today_stock'
-        ]
+        fields = ['id', 'shop_name', 'category', 'locality', 'pincode', 'delivery_fee', 'free_delivery_threshold', 'is_closed_today', 'platform_score','stock_last_updated', 'today_stock','average_rating', 'review_count'] 
+
 
     def get_today_stock(self, obj):
         from django.utils import timezone
@@ -58,6 +59,16 @@ class CustomerShopSerializer(serializers.ModelSerializer):
         stock = DailyStock.objects.filter(product__vendor=obj, date=today)
         stock_last_updated = serializers.DateTimeField(read_only=True) 
         return DailyStockSerializer(stock, many=True).data
+
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews.exists():
+            return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+        return 0.0
+
+    # Counts total reviews
+    def get_review_count(self, obj):
+        return obj.reviews.count()
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -69,11 +80,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     vendor_name = serializers.CharField(source='vendor.shop_name', read_only=True)
+    customer_name = serializers.CharField(source='customer.user.first_name', read_only=True)
     
     class Meta:
         model = Order
-        fields = ['id', 'vendor', 'vendor_name', 'status', 'order_type', 'subtotal', 'delivery_fee', 'total_amount', 'created_at', 'items']
-        customer_name = serializers.CharField(source='customer.user.first_name', read_only=True)
+        fields = ['id', 'vendor', 'vendor_name','customer_name', 'status', 'order_type', 'subtotal', 'delivery_fee', 'total_amount', 'created_at', 'items']
+        
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
@@ -104,7 +116,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class CustomerProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     name = serializers.CharField(source='user.first_name', read_only=True)
-    demerit_points = serializers.IntegerField(read_only=True)
+  
 
     class Meta:
         model = Customer
@@ -122,3 +134,12 @@ class DailyVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = DailyVote
         fields = ['id', 'item_name', 'vote_count', 'pincode']
+
+class ReviewSerializer(serializers.ModelSerializer):
+   
+    customer_name = serializers.CharField(source='customer.user.first_name', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ['id', 'order', 'vendor', 'customer', 'customer_name', 'rating', 'text', 'created_at']
+        read_only_fields = ['order', 'vendor', 'customer']

@@ -199,14 +199,32 @@
     </div>
     </section>
 
-    <!-- SECTION: Customer Reviews  -->
-    <section id="reviews" class="content-card mt-4">
-      <div class="card-header">
-        <h3>Recent Customer Reviews</h3>
-        <span class="badge">0 Reviews</span>
+          <!-- MODULE 4: RATINGS & REVIEWS -->
+      <div class="content-card mt-4">
+        <div class="card-header">
+          <h3>Customer Reviews ⭐</h3>
+        </div>
+        
+        @if (reviews.length === 0) {
+          <p class="empty-state">No reviews yet. Fulfil orders to earn them!</p>
+        } @else {
+          <div style="display: flex; flex-direction: column; gap: 15px;">
+            @for (review of reviews; track review.id) {
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                  <strong style="color: #2c3e50;">{{ review.customer_name }}</strong>
+                  <span style="color: #f39c12; font-weight: bold;">{{ review.rating }} / 5</span>
+                </div>
+                <p style="margin: 0 0 10px 0; color: #555; font-size: 0.95rem;">
+                  {{ review.text || 'No written comment provided.' }}
+                </p>
+                <small style="color: #999; font-size: 0.8rem;">Reviewed on: {{ review.created_at | date:'medium' }}</small>
+              </div>
+            }
+          </div>
+        }
       </div>
-      <p class="empty-state">Verified customer reviews will appear here once orders are completed.</p>
-    </section>
+
 
   </main>
 </div>

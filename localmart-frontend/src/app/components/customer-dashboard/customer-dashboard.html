@@ -76,11 +76,20 @@
                 <strong>{{ order.vendor_name }}</strong>
                 <span class="status-badge" [class]="order.status.toLowerCase()">{{ order.status }}</span>
               </div>
+               <!-- ADD FIX 5 RIGHT HERE -->
+          <div style="margin: 10px 0;">
+            @for (item of order.items; track item.id) {
+              <p style="font-size:0.85rem;color:#666; margin: 2px 0;">
+                {{ item.quantity }}x {{ item.product_name }} — ₹{{ item.price }}
+              </p>
+            }
+          </div>
               <p class="history-meta">{{ order.order_type }} • ₹{{ order.total_amount }}</p>
               
               <!-- NEW: Customer Confirmation Button -->
               @if (order.status === 'READY') {
-                <button class="btn-primary btn-sm mt-2 full-width" (click)="confirmDelivery(order.id)">I Received This ✅</button>
+                <button class="btn-primary btn-sm mt-2" (click)="confirmDelivery(order)">I Received This ✅</button>
+
               }
             </div>
           }
@@ -129,7 +138,20 @@
                 <h3>{{ shop.shop_name }}</h3>
                 <span class="category-badge">{{ shop.category }}</span>
               </div>
-              <div class="score-badge">⭐ {{ shop.platform_score }}</div>
+              <div class="shop-header">
+            <div>
+              <h3>{{ shop.shop_name }}</h3>
+              <span class="category-badge">{{ shop.category }}</span>
+            </div>
+            
+            <!-- NEW DUAL RATING DISPLAY -->
+            <div style="display: flex; flex-direction: column; gap: 5px; text-align: right;">
+              <span class="score-badge" title="Platform Score">🏆 {{ shop.platform_score }}</span>
+              <span class="score-badge" title="Customer Reviews" style="color: #f39c12; border-color: #f39c12;">
+                ⭐ {{ shop.average_rating }} <small style="color: #888;">({{ shop.review_count }})</small>
+              </span>
+            </div>
+          </div>
               
             </div>
             <p class="shop-meta">Last updated: {{ shop.stock_last_updated | date:'short' }}</p>
@@ -178,3 +200,30 @@
     }
   </main>
 </div>
+@if (showReviewModal) {
+  <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+    <div class="modal-content" style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+      <h3 style="margin-top: 0; color: #2c3e50;">Rate your experience! ⭐</h3>
+      <p style="color: #666; margin-bottom: 20px;">How was your order?</p>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="font-weight: bold; font-size: 0.9rem;">Rating (1-5 stars):</label>
+        <select [(ngModel)]="reviewRating" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc;">
+          <option value="5">⭐⭐⭐⭐⭐ - Excellent</option>
+          <option value="4">⭐⭐⭐⭐ - Good</option>
+          <option value="3">⭐⭐⭐ - Average</option>
+          <option value="2">⭐⭐ - Poor</option>
+          <option value="1">⭐ - Terrible</option>
+        </select>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight: bold; font-size: 0.9rem;">Leave a comment (optional):</label>
+        <textarea [(ngModel)]="reviewText" rows="3" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc; font-family: inherit;"></textarea>
+      </div>
+      
+      <button class="btn-primary full-width" (click)="submitReview()">Submit Review</button>
+      <button class="btn-danger full-width mt-2" style="background: white; color: #666; border: 1px solid #ccc;" (click)="closeReviewModal()">Skip for now</button>
+    </div>
+  </div>
+}

@@ -3,11 +3,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
 import Chart from 'chart.js/auto';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-vendor-dashboard',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule,DatePipe],
   templateUrl: './vendor-dashboard.html',
   styleUrl: './vendor-dashboard.css',
 })
@@ -25,6 +26,7 @@ export class VendorDashboard implements OnInit {
   isClosedToday: boolean = false;
 
   products: any[] = [];
+  reviews: any[] = [];
   
   vendorProfile: any = {
     shop_name: 'Loading...',
@@ -150,6 +152,7 @@ export class VendorDashboard implements OnInit {
         this.userEmail = data.email; 
         this.isClosedToday = data.is_closed_today; 
         this.cdr.detectChanges(); 
+        this.loadReviews(data.id);
       },
       error: (err) => console.error('Failed to load profile', err)
     });
@@ -240,6 +243,15 @@ export class VendorDashboard implements OnInit {
         maintainAspectRatio: false,
         scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
+    });
+  }
+  loadReviews(vendorId: number) {
+    this.shopService.getVendorReviews(vendorId).subscribe({
+      next: (data) => {
+        this.reviews = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load reviews', err)
     });
   }
 }

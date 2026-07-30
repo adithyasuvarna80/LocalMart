@@ -78,6 +78,14 @@ export class ShopService {
     return this.http.get<any[]>(`${this.apiUrl}/poll/chart/`);
   }
 
+  submitReview(reviewData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/reviews/`, reviewData);
+  }
+
+  getVendorReviews(vendorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/vendors/${vendorId}/reviews/`);
+  }
+
 }
 
 

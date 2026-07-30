@@ -103,3 +103,15 @@ class UserVote(models.Model):
     date = models.DateField(default=timezone.now)
    
     voted_items = models.ManyToManyField(PollItem)
+
+class Review(models.Model):
+   
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='reviews')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField(default=5)  # 1 to 5 stars
+    text = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.rating} Stars by {self.customer.user.first_name} for {self.vendor.shop_name}"

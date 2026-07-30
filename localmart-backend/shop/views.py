@@ -5,19 +5,16 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
 from authentication.models import Vendor 
-from .models import Product, DailyStock, Order, OrderItem
-from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer, CustomerShopSerializer, OrderSerializer
 
-from .models import Product, DailyStock
 from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer
 from .serializers import CustomerShopSerializer,CustomerProfileSerializer
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review
 from .serializers import (
     ProductSerializer, VendorProfileSerializer, DailyStockSerializer, 
     CustomerShopSerializer, CustomerProfileSerializer, OrderSerializer,
-    PollItemSerializer, DailyVoteSerializer
+    PollItemSerializer, DailyVoteSerializer,ReviewSerializer
 )
 
 
@@ -118,7 +115,7 @@ class LocalShopsView(APIView):
         customer = request.user.customer_profile
         
        
-        shops = Vendor.objects.filter(pincode=customer.pincode)
+        shops = Vendor.objects.filter(pincode=customer.pincode).order_by('is_closed_today', 'shop_name')
         
         
         serializer = CustomerShopSerializer(shops, many=True)
@@ -287,3 +284,37 @@ class VendorPollChartDataView(APIView):
         return Response(DailyVoteSerializer(votes, many=True).data)
 
 
+class SubmitReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        order_id = request.data.get('order')
+        
+        # Ensure the order exists, belongs to this customer, and is actually COMPLETED
+        order = Order.objects.filter(id=order_id, customer=request.user.customer_profile, status='COMPLETED').first()
+        
+        if not order:
+            return Response({"error": "Valid completed order not found."}, status=404)
+
+        # Double check to prevent duplicate reviews (OneToOneField also backs this up)
+        if hasattr(order, 'review'):
+            return Response({"error": "You have already reviewed this order."}, status=400)
+
+        # Create and save the review
+        Review.objects.create(
+            order=order,
+            vendor=order.vendor,
+            customer=request.user.customer_profile,
+            rating=request.data.get('rating', 5),
+            text=request.data.get('text', '')
+        )
+        return Response({"message": "Review submitted successfully!"})
+
+class VendorReviewsListView(APIView):
+    # Anyone can read reviews
+    permission_classes = [AllowAny] 
+
+    def get(self, request, vendor_id):
+        # Fetch all reviews for this specific vendor, newest first
+        reviews = Review.objects.filter(vendor_id=vendor_id).order_by('-created_at')
+        return Response(ReviewSerializer(reviews, many=True).data)

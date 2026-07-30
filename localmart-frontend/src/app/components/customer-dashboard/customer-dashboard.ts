@@ -2,11 +2,12 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms'; 
+import { DatePipe } from '@angular/common'; 
 
 @Component({
   selector: 'app-customer-dashboard',
   standalone: true,
-  imports: [FormsModule], 
+  imports: [FormsModule,DatePipe], 
   templateUrl: './customer-dashboard.html',
   styleUrl: './customer-dashboard.css',
 })
@@ -31,6 +32,11 @@ export class CustomerDashboard implements OnInit {
 
    pollItems: any[] = [];
   selectedPollItems: Set<number> = new Set<number>();
+
+  showReviewModal: boolean = false;
+  reviewOrderId: number | null = null;
+  reviewRating: number = 5;
+  reviewText: string = '';
 
   ngOnInit() {
     this.loadProfile();
@@ -183,15 +189,7 @@ const orderData = {
     this.router.navigate(['/login']); 
   }
 
-    confirmDelivery(orderId: number) {
-    this.shopService.confirmDelivery(orderId).subscribe({
-      next: (res) => {
-        alert('Thank you for confirming your delivery!');
-        this.loadOrders(); 
-      },
-      error: (err) => console.error(err)
-    });
-  }
+    
 
    loadPollItems() {
     this.shopService.getPollItems().subscribe({
@@ -224,4 +222,48 @@ const orderData = {
       error: (err) => alert('Failed to submit votes.')
     });
   }
+
+  confirmDelivery(order: any) {
+    this.shopService.confirmDelivery(order.id).subscribe({
+      next: (res) => {
+        this.loadOrders(); // Refresh order history instantly
+        
+        // Pop open the review modal for this specific order
+        this.reviewOrderId = order.id;
+        this.reviewRating = 5; 
+        this.reviewText = '';
+        this.showReviewModal = true; 
+      },
+      error: (err) => alert('Failed to confirm delivery.')
+    });
+  }
+
+  submitReview() {
+    if (!this.reviewOrderId) return;
+    
+    const payload = {
+      order: this.reviewOrderId,
+      rating: Number(this.reviewRating), // Ensure it is sent as a number
+      text: this.reviewText
+    };
+    
+    this.shopService.submitReview(payload).subscribe({
+      next: (res) => {
+        alert('Thank you for your review!');
+        this.closeReviewModal();
+        this.loadLocalShops(); // Refresh shops so the new score will eventually appear
+      },
+      error: (err) => {
+        alert('Failed to submit review. You may have already reviewed this order.');
+        console.error(err);
+      }
+    });
+  }
+  
+  closeReviewModal() {
+    this.showReviewModal = false;
+    this.reviewOrderId = null;
+  }
+
+  
 }
