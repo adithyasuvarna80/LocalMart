@@ -290,17 +290,17 @@ class SubmitReviewView(APIView):
     def post(self, request):
         order_id = request.data.get('order')
         
-        # Ensure the order exists, belongs to this customer, and is actually COMPLETED
+        
         order = Order.objects.filter(id=order_id, customer=request.user.customer_profile, status='COMPLETED').first()
         
         if not order:
             return Response({"error": "Valid completed order not found."}, status=404)
 
-        # Double check to prevent duplicate reviews (OneToOneField also backs this up)
+        
         if hasattr(order, 'review'):
             return Response({"error": "You have already reviewed this order."}, status=400)
 
-        # Create and save the review
+        
         Review.objects.create(
             order=order,
             vendor=order.vendor,
@@ -311,10 +311,10 @@ class SubmitReviewView(APIView):
         return Response({"message": "Review submitted successfully!"})
 
 class VendorReviewsListView(APIView):
-    # Anyone can read reviews
+   
     permission_classes = [AllowAny] 
 
     def get(self, request, vendor_id):
-        # Fetch all reviews for this specific vendor, newest first
+      
         reviews = Review.objects.filter(vendor_id=vendor_id).order_by('-created_at')
         return Response(ReviewSerializer(reviews, many=True).data)

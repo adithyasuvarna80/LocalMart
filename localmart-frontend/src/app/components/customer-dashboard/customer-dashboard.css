@@ -132,3 +132,15 @@
 .status-badge.pending { background: #fff3cd; color: #856404; }
 .status-badge.accepted { background: #d4edda; color: #155724; }
 .status-badge.completed { background: #cce5ff; color: #004085; }
+
+
+.status-badge.ready { background: #d1ecf1; color: #0c5460; }
+.status-badge.rejected { background: #f8d7da; color: #721c24; }
+
+/* Closed Shop Styles */
+.shop-closed { opacity: 0.6; filter: grayscale(100%); pointer-events: none; }
+.closed-banner { background: #dc3545; color: white; padding: 5px 10px; font-weight: bold; text-align: center; border-radius: 4px; margin-bottom: 10px; display: inline-block;}
+
+/* Interactive Star Rating */
+.star-rating { font-size: 2rem; cursor: pointer; color: #e4e5e9; transition: color 0.2s; }
+.star-rating.active { color: #f39c12; }

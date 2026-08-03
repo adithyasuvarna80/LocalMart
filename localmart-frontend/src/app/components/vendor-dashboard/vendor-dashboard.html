@@ -38,6 +38,7 @@
       <div class="location-badge">
         📍 {{ vendorProfile.locality }} - {{ vendorProfile.pincode }}
       </div>
+      
 
       <div class="score-box">
         <span class="score-label">Platform Score</span>
@@ -49,13 +50,19 @@
       </div>
     </div>
 
-    <nav class="side-nav">
-      <a href="#catalogue" class="nav-item active">📦 Product Catalogue</a>
-      <a href="#reviews" class="nav-item">⭐ Customer Reviews</a>
-      <a href="#demand" class="nav-item">📊 Area Demand Poll</a>
-    </nav>
-    
-    <button class="logout-btn" (click)="logout()">🚪 Logout</button>
+        <nav class="side-nav" style="flex-grow: 1; overflow-y: auto;">
+        <a (click)="switchTab('live-stock')" class="nav-item" [class.active]="activeTab === 'live-stock'" style="cursor: pointer;">📦 Today's Live Stock</a>
+        <a (click)="switchTab('orders')" class="nav-item" [class.active]="activeTab === 'orders'" style="cursor: pointer;">🚚 Live Orders</a>
+        <a (click)="switchTab('catalogue')" class="nav-item" [class.active]="activeTab === 'catalogue'" style="cursor: pointer;">📋 Product Catalogue</a>
+        <a (click)="switchTab('demand')" class="nav-item" [class.active]="activeTab === 'demand'" style="cursor: pointer;">📊 Area Demand Poll</a>
+        <a (click)="switchTab('reviews')" class="nav-item" [class.active]="activeTab === 'reviews'" style="cursor: pointer;">⭐ Customer Reviews</a>
+      </nav>
+
+      <!-- Logout Button (Anchored to bottom) -->
+      <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid #eee;">
+        <button class="logout-btn full-width" (click)="logout()">Logout</button>
+      </div>
+
   </aside>
 
   <!-- MAIN CONTENT AREA -->
@@ -64,6 +71,7 @@
       <h2>Vendor Dashboard</h2>
       <p class="subtitle">Manage your stock, orders, and shop performance.</p>
     </header>
+     @if (activeTab === 'live-stock'){
         <!-- SECTION: Today's Live Stock -->
     <section id="live-stock" class="content-card mt-4">
       <div class="card-header">
@@ -103,9 +111,10 @@
         💾 Save Live Stock Updates
       </button>
     </section>
-
+  }
 
     <!-- SECTION: Product Catalogue -->
+      @if (activeTab === 'catalogue') {
     <section id="catalogue" class="content-card">
       <div class="card-header">
         <h3>Add New Product</h3>
@@ -151,7 +160,11 @@
           }
         }
       </div>
+      </section>
+      }
+     
       <!-- LIVE ORDERS BOARD -->
+         @if (activeTab === 'orders'){
     <div class="content-card mt-4">
       <div class="card-header">
         <h3>Live Orders 📦</h3>
@@ -187,19 +200,28 @@
           }
         </div>
       }
+
+
     </div>
+  }
+
      <!-- VENDOR DEMAND CHART -->
+      @if (activeTab === 'demand') {
     <div class="content-card mt-4">
       <div class="card-header">
-        <h3>📊 Live Area Demand</h3>
+        <h3>📊 Live Area Demand in {{ vendorProfile.locality }}</h3>
       </div>
       <div style="position: relative; height: 300px; width: 100%;">
         <canvas id="demandChart"></canvas>
       </div>
     </div>
-    </section>
+    
+
+  }
 
           <!-- MODULE 4: RATINGS & REVIEWS -->
+            @if (activeTab === 'reviews') {
+        
       <div class="content-card mt-4">
         <div class="card-header">
           <h3>Customer Reviews ⭐</h3>
@@ -224,6 +246,9 @@
           </div>
         }
       </div>
+    
+    }
+    
 
 
   </main>

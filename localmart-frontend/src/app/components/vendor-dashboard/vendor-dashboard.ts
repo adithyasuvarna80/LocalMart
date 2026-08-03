@@ -23,6 +23,9 @@ export class VendorDashboard implements OnInit {
    orders: any[] = [];
    chart: any;
 
+   activeTab: string = 'live-stock';
+
+
   isClosedToday: boolean = false;
 
   products: any[] = [];
@@ -253,5 +256,9 @@ export class VendorDashboard implements OnInit {
       },
       error: (err) => console.error('Failed to load reviews', err)
     });
+  }
+  switchTab(tab: string) {
+    this.activeTab = tab;
+    this.cdr.detectChanges();
   }
 }

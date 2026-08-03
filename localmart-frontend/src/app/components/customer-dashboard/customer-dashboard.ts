@@ -226,9 +226,9 @@ const orderData = {
   confirmDelivery(order: any) {
     this.shopService.confirmDelivery(order.id).subscribe({
       next: (res) => {
-        this.loadOrders(); // Refresh order history instantly
+        this.loadOrders();
         
-        // Pop open the review modal for this specific order
+        
         this.reviewOrderId = order.id;
         this.reviewRating = 5; 
         this.reviewText = '';
@@ -243,7 +243,7 @@ const orderData = {
     
     const payload = {
       order: this.reviewOrderId,
-      rating: Number(this.reviewRating), // Ensure it is sent as a number
+      rating: Number(this.reviewRating), 
       text: this.reviewText
     };
     
@@ -251,7 +251,7 @@ const orderData = {
       next: (res) => {
         alert('Thank you for your review!');
         this.closeReviewModal();
-        this.loadLocalShops(); // Refresh shops so the new score will eventually appear
+        this.loadLocalShops(); 
       },
       error: (err) => {
         alert('Failed to submit review. You may have already reviewed this order.');
