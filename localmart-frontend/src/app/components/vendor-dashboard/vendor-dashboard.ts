@@ -75,7 +75,12 @@ export class VendorDashboard implements OnInit {
       next: (res) => {
         this.isClosedToday = res.is_closed_today;
         this.cdr.detectChanges();
+
+        if (this.isClosedToday) {
+          this.needsStockUpdate = false; 
+        }
       },
+      
       error: (err) => {
         alert('Failed to update shop status.');
         console.error(err);

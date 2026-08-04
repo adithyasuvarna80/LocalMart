@@ -22,7 +22,10 @@
         }
       </div>
 
-      <button class="btn-primary full-width mt-4" (click)="submitStock()">Confirm Stock & Enter Shop</button>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn-primary full-width" (click)="submitStock()">Save & Open Shop</button>
+            <button class="btn-danger full-width" style="background: white;" (click)="toggleShopClosed()">Mark Shop Closed Today</button>
+          </div>
     </div>
   </div>
 }@else{
@@ -67,6 +70,12 @@
 
   <!-- MAIN CONTENT AREA -->
   <main class="main-content">
+      <!-- MODULE 5: NUDGE BANNER -->
+      @if (vendorProfile.needs_stock_nudge && !isClosedToday) {
+        <div style="background: #fff3cd; color: #856404; padding: 15px 20px; border-radius: 8px; border-left: 5px solid #ffc107; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <strong style="font-size: 1.2rem;">⚠️ Stock Update Required:</strong> 
+          <span>It has been over 12 hours since your last update. Please update your stock now to avoid a demerit point.</span>
+        </div>
     <header class="top-header">
       <h2>Vendor Dashboard</h2>
       <p class="subtitle">Manage your stock, orders, and shop performance.</p>
@@ -112,6 +121,7 @@
       </button>
     </section>
   }
+}
 
     <!-- SECTION: Product Catalogue -->
       @if (activeTab === 'catalogue') {
@@ -253,5 +263,5 @@
 
   </main>
 </div>
-}
+      }
 

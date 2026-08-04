@@ -49,3 +49,32 @@ def calculate_platform_scores():
         vendor.save()
         
     print(f"[{timezone.now()}] Successfully updated platform scores for all vendors.")
+
+def apply_stock_nudges():
+    """12-Hour Soft Nudge: Flags vendors who haven't updated stock recently."""
+    twelve_hours_ago = timezone.now() - timedelta(hours=12)
+    # Find open shops that haven't updated in 12 hours (or have never updated)
+    vendors = Vendor.objects.filter(is_closed_today=False)
+    
+    updated_count = 0
+    for vendor in vendors:
+        if vendor.stock_last_updated is None or vendor.stock_last_updated < twelve_hours_ago:
+            vendor.needs_stock_nudge = True
+            vendor.save()
+            updated_count += 1
+            
+    print(f"[{timezone.now()}] Applied stock nudge to {updated_count} vendors.")
+
+def apply_demerits():
+    """24-Hour Penalty: Adds 1 demerit to open vendors who haven't updated in 24 hours."""
+    twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+    vendors = Vendor.objects.filter(is_closed_today=False)
+    
+    updated_count = 0
+    for vendor in vendors:
+        if vendor.stock_last_updated is None or vendor.stock_last_updated < twenty_four_hours_ago:
+            vendor.demerit_points += 1
+            vendor.save()
+            updated_count += 1
+            
+    print(f"[{timezone.now()}] Assigned demerit points to {updated_count} vendors.")

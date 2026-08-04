@@ -15,10 +15,11 @@ class ProductSerializer(serializers.ModelSerializer):
 class VendorProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     demerit_points = serializers.IntegerField(read_only=True)
+    needs_stock_nudge = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Vendor
-        fields = ['id', 'user', 'shop_name', 'category', 'locality', 'pincode', 'delivery_fee', 'free_delivery_threshold', 'is_closed_today', 'platform_score', 'email', 'demerit_points']
+        fields = ['id', 'user', 'shop_name', 'category', 'locality', 'pincode', 'delivery_fee', 'free_delivery_threshold', 'is_closed_today', 'platform_score', 'email', 'demerit_points','needs_stock_nudge']
 
 
 class DailyStockSerializer(serializers.ModelSerializer):

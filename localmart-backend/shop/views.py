@@ -88,6 +88,10 @@ class DailyStockManageView(APIView):
 
         vendor = request.user.vendor_profile
         vendor.stock_last_updated = timezone.now()
+        
+
+        vendor.stock_last_updated = timezone.now()
+        vendor.needs_stock_nudge = False
         vendor.save()
                 
         return Response({"message": "Daily stock updated successfully!"})
