@@ -217,9 +217,17 @@ const orderData = {
     const itemIds = Array.from(this.selectedPollItems);
     const pincode = this.customerProfile ? this.customerProfile.pincode : '000000';
     
+     // Call the service to save votes in the database
     this.shopService.submitPollVote(itemIds, pincode).subscribe({
-      next: (res) => alert('Your votes have been recorded! Thank you for participating.'),
-      error: (err) => alert('Failed to submit votes.')
+      next: (res) => {
+        alert("Your poll vote has been submitted successfully! 🪙 You've also been entered into today's 11 PM Token Lottery!");
+        this.selectedPollItems.clear(); // Clear selections after success
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        alert("Failed to submit your vote.");
+        console.error(err);
+      }
     });
   }
 

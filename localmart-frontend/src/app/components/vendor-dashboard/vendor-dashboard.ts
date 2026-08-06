@@ -56,11 +56,19 @@ export class VendorDashboard implements OnInit {
     this.loadChartData();
   }
 
-  saveLiveStock() {
+    saveLiveStock() {
     this.shopService.updateDailyStock(this.dailyStock).subscribe({
       next: (res) => {
-        alert('Live stock updated successfully!');
+        // 1. Ensure localStorage is updated for today
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem('last_stock_submit', today);
+
+        // 2. Reload both stock levels AND the profile state (clears the nudge in UI!)
+        this.loadDailyStock();
+        this.loadProfile(); // <-- CRITICAL: Resets needs_stock_nudge and stock_last_updated
+        
         this.cdr.detectChanges();
+        alert('Live stock updated successfully! ✅');
       },
       error: (err) => {
         alert('Failed to update live stock.');
@@ -68,6 +76,7 @@ export class VendorDashboard implements OnInit {
       }
     });
   }
+
 
   
   toggleShopClosed() {
@@ -89,21 +98,20 @@ export class VendorDashboard implements OnInit {
   }
 
 
-    loadDailyStock() { 
+     loadDailyStock() { 
     this.shopService.getDailyStock().subscribe({ 
       next: (data) => { 
         this.dailyStock = data; 
         
-        
-        if (this.dailyStock.length === 0) { 
+        // 1. Bypass gate if catalog is empty, or if the shop is marked closed today
+        if (this.dailyStock.length === 0 || this.isClosedToday) { 
           this.needsStockUpdate = false; 
         } 
-        
         else {
           const today = new Date().toISOString().split('T')[0];
           const lastSubmit = localStorage.getItem('last_stock_submit'); 
           
-        
+          // 2. Bypass gate if stock has already been submitted today
           if (lastSubmit === today) {
             this.needsStockUpdate = false; 
           }
@@ -120,25 +128,38 @@ export class VendorDashboard implements OnInit {
  
   this.dailyStock[index].quantity = parseFloat(event.target.value) || 0;
 }
+  
+  onPriceChange(index: number, event: any) {
+    const val = parseFloat(event.target.value);
+    if (!isNaN(val) && val >= 0) {
+      this.dailyStock[index].base_price = val;
+    }
+  }
 
 
  
-  submitStock() { 
-    this.shopService.updateDailyStock(this.dailyStock).subscribe({ 
-      next: (res) => { 
-        this.needsStockUpdate = false; 
-        
-       
+   submitStock() {
+    this.shopService.updateDailyStock(this.dailyStock).subscribe({
+      next: (res) => {
+        // 1. Record today's date to unlock the gate on refresh
         const today = new Date().toISOString().split('T')[0];
         localStorage.setItem('last_stock_submit', today);
+
+        // 2. Dismiss the morning gate overlay
+        this.needsStockUpdate = false;
+
+        // 3. Reload both stock levels and profile details
+        this.loadDailyStock();
+        this.loadProfile(); // <-- CRITICAL: Dismisses nudge banner & registers open status
         
-        this.cdr.detectChanges(); 
-      }, 
-      error: (err) => { 
-        alert('Failed to update stock. Please try again.'); 
-        console.error(err); 
-      } 
-    }); 
+        this.cdr.detectChanges();
+        alert('Morning stock saved successfully! Your shop is now open. 📦');
+      },
+      error: (err) => {
+        alert('Failed to save morning stock.');
+        console.error(err);
+      }
+    });
   }
 
    loadProducts() {
@@ -229,27 +250,43 @@ export class VendorDashboard implements OnInit {
     const labels = data.map(item => item.item_name);
     const votes = data.map(item => item.vote_count);
 
-    const canvas = document.getElementById('demandChart') as HTMLCanvasElement;
-    if (!canvas) return;
+    // Destroy old chart instance if it exists to allow refreshing
+    if (this.chart) {
+      this.chart.destroy();
+    }
 
-    
-    if (this.chart) this.chart.destroy();
+    const ctx = document.getElementById('demandChart') as HTMLCanvasElement;
+    if (!ctx) return;
 
-    this.chart = new Chart(canvas, {
+    this.chart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [{
-          label: 'Area Votes Today',
+          label: 'Number of Votes',
           data: votes,
-          backgroundColor: '#007bff',
-          borderRadius: 4
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+          borderRadius: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
       }
     });
   }
@@ -262,8 +299,16 @@ export class VendorDashboard implements OnInit {
       error: (err) => console.error('Failed to load reviews', err)
     });
   }
-  switchTab(tab: string) {
+    switchTab(tab: string) {
     this.activeTab = tab;
-    this.cdr.detectChanges();
+    this.cdr.detectChanges(); // 1. Force Angular to update the DOM immediately
+
+    // 2. If switching to the demand poll tab, trigger the chart loader!
+    if (tab === 'demand') {
+      setTimeout(() => {
+        this.loadChartData();
+      }, 50); // A tiny 50ms delay guarantees the canvas element is fully active in the DOM
+    }
   }
+
 }

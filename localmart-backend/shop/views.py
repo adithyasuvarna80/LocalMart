@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
 from authentication.models import Vendor 
+from django.db.models import Case, When, Value, IntegerField
 
 from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer
 from .serializers import CustomerShopSerializer,CustomerProfileSerializer
@@ -46,55 +47,52 @@ class DailyStockManageView(APIView):
     def get(self, request):
         vendor = request.user.vendor_profile
         today = timezone.now().date()
-        yesterday = today - timedelta(days=1)
-
-        products = Product.objects.filter(vendor=vendor)
-        today_stock = []
-
-        for product in products:
-            
-            stock_entry, created = DailyStock.objects.get_or_create(
-                product=product,
-                date=today,
-                defaults={'quantity': 0.00}
-            )
-            
-            
-            if created:
-                yesterday_stock = DailyStock.objects.filter(product=product, date=yesterday).first()
-                if yesterday_stock:
-                    stock_entry.quantity = yesterday_stock.quantity
-                    stock_entry.save()
-                    
-            today_stock.append(stock_entry)
-
-        serializer = DailyStockSerializer(today_stock, many=True)
+        
+        # Pre-fill yesterday's stock levels for today if missing [5]
+        stock_exists = DailyStock.objects.filter(product__vendor=vendor, date=today).exists()
+        if not stock_exists:
+            products = Product.objects.filter(vendor=vendor)
+            for product in products:
+                latest_stock = DailyStock.objects.filter(product=product).order_by('-date').first()
+                qty = latest_stock.quantity if latest_stock else 0.00
+                DailyStock.objects.create(product=product, date=today, quantity=qty)
+        
+        stock_items = DailyStock.objects.filter(product__vendor=vendor, date=today)
+        serializer = DailyStockSerializer(stock_items, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        
-        stock_data = request.data
-        for item in stock_data:
-            try:
-               
-                stock_entry = DailyStock.objects.get(
-                    id=item['id'], 
-                    product__vendor=request.user.vendor_profile
-                )
-                stock_entry.quantity = item['quantity']
-                stock_entry.save() 
-            except DailyStock.DoesNotExist:
-                continue
-
         vendor = request.user.vendor_profile
-        vendor.stock_last_updated = timezone.now()
         
-
+        # Loop through updated rows sent from the Angular client
+        for item in request.data:
+            try:
+                stock_id = item.get('id')
+                qty = item.get('quantity', 0.00)
+                price = item.get('base_price') # <-- Read the new price payload
+                
+                stock_record = DailyStock.objects.get(id=stock_id, product__vendor=vendor)
+                
+                # 1. Save stock quantity and update the "Sold Out" status [6]
+                stock_record.quantity = float(qty)
+                stock_record.is_sold_out = (stock_record.quantity <= 0)
+                stock_record.save()
+                
+                # 2. Write price update to the master product table [2]
+                if price is not None:
+                    product = stock_record.product
+                    product.base_price = float(price)
+                    product.save()
+                    
+            except (DailyStock.DoesNotExist, ValueError, TypeError):
+                continue
+                
+        # Update timestamp to clear accountability soft nudges & demerit triggers [7]
         vendor.stock_last_updated = timezone.now()
         vendor.needs_stock_nudge = False
         vendor.save()
-                
-        return Response({"message": "Daily stock updated successfully!"})
+        
+        return Response({"message": "Stock quantities and daily rates successfully updated!"})
     
 
 class ToggleShopClosedView(APIView):
@@ -112,16 +110,39 @@ class LocalShopsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-       
-        if not hasattr(request.user, 'customer_profile'):
-            return Response({"error": "Only customers can browse shops."}, status=403)
+        user = request.user
         
-        customer = request.user.customer_profile
-        
-       
-        shops = Vendor.objects.filter(pincode=customer.pincode).order_by('is_closed_today', 'shop_name')
-        
-        
+        # 1. Get the customer's pincode to filter shops hyperlocally
+        try:
+            customer_profile = user.customer_profile
+            pincode = getattr(customer_profile, 'pincode', None)
+        except AttributeError:
+            return Response({"error": "User does not have an active customer profile"}, status=400)
+            
+        if not pincode:
+            return Response({"error": "Pincode is missing for this customer profile"}, status=400)
+
+        # 2. Query and dynamically annotate vendors based on demerit tiers & open status
+        shops = Vendor.objects.filter(pincode=pincode).annotate(
+            visibility_tier=Case(
+                # Rule 1: Closed shops go to the absolute bottom (Tier 4)
+                When(is_closed_today=True, then=Value(4)),
+                # Rule 2: Open shops with 10+ demerit points (Tier 3)
+                When(demerit_points__gte=10, then=Value(3)),
+                # Rule 3: Open shops with 6 to 9 demerit points (Tier 2)
+                When(demerit_points__range=(6, 9), then=Value(2)),
+                # Rule 4: Open shops with 3 to 5 demerit points (Tier 1)
+                When(demerit_points__range=(3, 5), then=Value(1)),
+                # Rule 5: Open shops with 0 to 2 demerit points (Tier 0 - Normal / Top)
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        ).order_by(
+            'visibility_tier',          # Sort by visibility tiers (Tier 0 first, Tier 4 last)
+            '-platform_score',          # Tie-breaker 1: prioritize higher platform scores
+            'shop_name'                 # Tie-breaker 2: alphabetical sorting
+        )
+
         serializer = CustomerShopSerializer(shops, many=True)
         return Response(serializer.data)
 

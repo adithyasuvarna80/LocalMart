@@ -11,13 +11,26 @@
             <div class="item-info">
               <strong>{{ item.product_name }}</strong>
             </div>
-            <div class="item-input">
-              <input type="number" 
-                     [value]="item.quantity" 
-                     (input)="onQuantityChange(i, $event)" 
-                     min="0" step="0.5">
-              <span>{{ item.unit }}</span>
-            </div>
+             <div class="item-input" style="display: flex; gap: 15px; align-items: center;">
+                  <!-- Daily Price input Box -->
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="color: #28a745; font-size: 0.9rem; font-weight: 500;">₹</span>
+                    <input type="number" 
+                           [value]="item.base_price" 
+                           (input)="onPriceChange(i, $event)" 
+                           style="width: 75px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold; color: #28a745;" 
+                           min="1">
+                  </div>
+                  <!-- Daily Quantity input Box -->
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="color: #666; font-size: 0.9rem;">Qty:</span>
+                    <input type="number" 
+                           [value]="item.quantity" 
+                           (input)="onQuantityChange(i, $event)" 
+                           style="width: 75px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold;" 
+                           min="0">
+                  </div>
+                  </div>
           </div>
         }
       </div>
@@ -76,52 +89,52 @@
           <strong style="font-size: 1.2rem;">⚠️ Stock Update Required:</strong> 
           <span>It has been over 12 hours since your last update. Please update your stock now to avoid a demerit point.</span>
         </div>
+      }
     <header class="top-header">
       <h2>Vendor Dashboard</h2>
       <p class="subtitle">Manage your stock, orders, and shop performance.</p>
     </header>
-     @if (activeTab === 'live-stock'){
-        <!-- SECTION: Today's Live Stock -->
-    <section id="live-stock" class="content-card mt-4">
-      <div class="card-header">
-        <h3>Today's Live Stock</h3>
-        <button class="btn-danger" (click)="toggleShopClosed()">
-          {{ isClosedToday ? 'Shop is Closed Today' : 'Mark Shop Closed Today' }}
-        </button>
-      </div>
-      
-      <div class="stock-list">
-        @if (dailyStock.length === 0) {
-          <p class="empty-state">No stock available for today. Add products to your catalogue below first.</p>
-        } @else {
-          @for (item of dailyStock; track item.id; let i = $index) {
-            <div class="stock-row">
-              <div class="item-info">
-                <strong>{{ item.product_name }}</strong>
+     @if (activeTab === 'live-stock') {
+        <div id="live-stock" class="content-card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>📦 Today's Live Stock & Daily Rates</h3>
+            <button class="btn-primary" (click)="saveLiveStock()">Save Stock & Prices</button>
+          </div>
+          
+          <div class="product-grid" style="display: flex; flex-direction: column; gap: 12px;">
+            @for (item of dailyStock; track item.id; let i = $index) {
+              <div class="product-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa;">
+                <div class="product-info">
+                  <span class="product-name" style="font-weight: bold; font-size: 1.1rem; color: #333;">{{ item.product_name }}</span>
+                  <span class="product-unit" style="color: #7f8c8d; font-size: 0.85rem;">Unit: {{ item.unit }}</span>
+                </div>
                 
-                <!-- Automated Sold Out Badge -->
-                @if (item.quantity == 0) {
-                  <span class="badge-danger ml-2">Sold Out</span>
-                }
+                <div style="display: flex; gap: 20px; align-items: center;">
+                  <!-- Live Price Update Input -->
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="color: #28a745; font-weight: bold; font-size: 1rem;">Rate: ₹</span>
+                    <input type="number" 
+                           [value]="item.base_price" 
+                           (input)="onPriceChange(i, $event)" 
+                           style="width: 85px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold; color: #28a745;" 
+                           min="1">
+                  </div>
+                  
+                  <!-- Live Stock Update Input -->
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span style="color: #495057; font-weight: 500; font-size: 0.95rem;">Stock Level:</span>
+                    <input type="number" 
+                           [value]="item.quantity" 
+                           (input)="onQuantityChange(i, $event)" 
+                           style="width: 85px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold;" 
+                           min="0">
+                  </div>
+                </div>
               </div>
-              <div class="item-input">
-                <input type="number" 
-                       [value]="item.quantity" 
-                       (input)="onQuantityChange(i, $event)" 
-                       min="0" step="0.5">
-                <span>{{ item.unit }}</span>
-              </div>
-            </div>
-          }
-        }
-      </div>
-
-      <button class="btn-primary mt-4" (click)="saveLiveStock()" [disabled]="dailyStock.length === 0">
-        💾 Save Live Stock Updates
-      </button>
-    </section>
-  }
-}
+            }
+          </div>
+        </div>
+      }
 
     <!-- SECTION: Product Catalogue -->
       @if (activeTab === 'catalogue') {
