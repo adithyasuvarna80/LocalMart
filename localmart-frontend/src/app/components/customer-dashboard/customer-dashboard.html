@@ -1,237 +1,477 @@
-<div class="dashboard-layout">
-  
-  <!-- LEFT SIDEBAR: Profile, Cart & Orders -->
+<div class="dashboard-container">
+  <!-- LEFT SIDEBAR: PROFILE & NAVIGATION -->
   <aside class="sidebar">
-    
-    <!-- Customer Profile Card -->
-    @if (customerProfile) {
-      <div class="profile-card">
-        <div class="avatar">👤</div>
-        <h3 class="shop-name">{{ customerProfile.name }}</h3>
-        <p class="email">{{ customerProfile.email }}</p>
-        <span class="location-badge">📍 {{ customerProfile.area_name }} ({{ customerProfile.pincode }})</span>
-         <div style="margin-top: 15px; background: #fff3cd; padding: 10px; border-radius: 8px; color: #856404; font-weight: bold; border: 1px solid #ffeeba;">
-          🪙 Wallet: {{ customerProfile?.wallet_balance || 0 }} Tokens
-        </div>
+    <div class="profile-card">
+      <div class="avatar-circle">
+        {{ customerProfile?.name?.[0] || 'C' }}
       </div>
-    }
-
-    <!-- Shopping Cart -->
-    <div class="cart-wrapper">
-      <h3>🛒 Your Cart</h3>
-      @if (cart.length === 0) {
-        <p class="empty-state text-sm">Your cart is empty.</p>
-      } @else {
-        <p class="cart-shop-name">Ordering from: <strong>{{ cartVendorName }}</strong></p>
-        
-        <select [(ngModel)]="orderType" class="full-width mb-3 order-type-select">
-          <option value="DELIVERY">🏠 Home Delivery</option>
-          <option value="PICKUP">🏬 Store Pickup</option>
-        </select>
-
-        <ul class="cart-list">
-          @for (c of cart; track c.product) {
-            <li class="cart-item">
-              <span>{{ c.cartQty }}x {{ c.product_name }}</span>
-              <span>₹{{ c.price * c.cartQty }}</span>
-            </li>
-          }
-        </ul>
-
-        <div class="cart-totals mt-3">
-          <div class="total-row">
-            <span>Subtotal:</span>
-            <span>₹{{ subtotal }}</span>
-          </div>
-          
-          @if (orderType === 'DELIVERY') {
-            <div class="total-row delivery-row">
-              <span>Delivery Fee:</span>
-              @if (subtotal >= freeDeliveryThreshold) {
-                <span class="free-delivery">FREE (Over ₹{{ freeDeliveryThreshold }})</span>
-              } @else {
-                <span>₹{{ deliveryFee }}</span>
-              }
-            </div>
-          }
-          
-          <div class="total-row grand-total mt-2">
-            <span>Total to Pay:</span>
-            <span>₹{{ totalAmount }}</span>
-          </div>
-        </div>
-                  @if (orderType === 'DELIVERY') {
-            <div style="margin-top: 15px; margin-bottom: 15px;">
-              <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Delivery Address:</label>
-              <textarea [(ngModel)]="deliveryAddress" rows="2" class="full-width" style="border: 1px solid #ccc; border-radius: 6px; padding: 8px; margin-top: 5px; font-family: inherit;" placeholder="Enter your full home address..."></textarea>
-            </div>
-          }
-        
-
-
-        <button class="btn-primary full-width mt-3" (click)="checkout()">Place Order</button>
-        <button class="btn-danger full-width mt-2" (click)="clearCart()">Clear Cart</button>
-      }
-    </div>
-
-    <!-- Order History -->
-    <div class="orders-wrapper mt-3">
-      <h3>📦 Recent Orders</h3>
-      @if (orders.length === 0) {
-        <p class="empty-state text-sm">No orders yet.</p>
-      } @else {
-        <div class="order-list">
-          @for (order of orders; track order.id) {
-            <div class="history-item">
-              <div class="history-header">
-                <strong>{{ order.vendor_name }}</strong>
-                <span class="status-badge" [class]="order.status.toLowerCase()">{{ order.status }}</span>
-              </div>
-               <!-- ADD FIX 5 RIGHT HERE -->
-          <div style="margin: 10px 0;">
-            @for (item of order.items; track item.id) {
-              <p style="font-size:0.85rem;color:#666; margin: 2px 0;">
-                {{ item.quantity }}x {{ item.product_name }} — ₹{{ item.price }}
-              </p>
-            }
-          </div>
-              <p class="history-meta">{{ order.order_type }} • ₹{{ order.total_amount }}</p>
-              
-              <!-- NEW: Customer Confirmation Button -->
-              @if (order.status === 'READY') {
-                <button class="btn-primary btn-sm mt-2" (click)="confirmDelivery(order)">I Received This ✅</button>
-
-              }
-            </div>
-          }
-        </div>
-      }
-    </div>
-    <div class="orders-wrapper mt-3">
-      <h3>📊 Today's Area Poll</h3>
-      <p class="text-sm" style="color: #666; margin-bottom: 10px;">Vote for what you need today!</p>
+      <h3 class="customer-name">{{ customerProfile?.name || 'Local Shopper' }}</h3>
+      <p class="customer-email">{{ customerProfile?.email }}</p>
       
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        @for (item of pollItems; track item.id) {
-          <label style="background: #f8f9fa; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; gap: 10px; border: 1px solid #eee;">
-            <input type="checkbox" (change)="togglePollItem(item.id, $event)">
-            <span><strong>{{ item.name }}</strong> <small style="color: #888;">({{ item.vote_count }} others want this)</small></span>
-
-          </label>
-        }
+      <div class="location-badge mt-2">
+        <span class="location-icon">📍</span>
+        <span>{{ customerProfile?.area_name || 'Neighborhood' }} ({{ customerProfile?.pincode || '------' }})</span>
       </div>
-      <button class="btn-primary full-width mt-2" style="background: #28a745;" (click)="submitVote()">Submit Vote</button>
     </div>
+
+    <!-- TABBED NAVIGATION -->
+    <nav class="side-nav">
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'shops'" 
+        (click)="activeTab = 'shops'">
+        <span class="nav-icon">🛍️</span> Shops near you
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'poll'" 
+        (click)="activeTab = 'poll'">
+        <span class="nav-icon">🗳️</span> Daily Voting Poll
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'orders'" 
+        (click)="activeTab = 'orders'">
+        <span class="nav-icon">📦</span> Your Orders
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'wallet'" 
+        (click)="activeTab = 'wallet'">
+        <span class="nav-icon">🪙</span> E-Wallet Rewards
+      </button>
+    </nav>
+
+    <!-- LOGOUT -->
+    <button class="logout-btn mt-4" (click)="logout()">
+      🚪 Log Out
+    </button>
   </aside>
 
-  <!-- MAIN CONTENT: Shops Grid -->
+  <!-- MAIN DISPLAY PANEL -->
   <main class="main-content">
+    
+    <!-- TOP HEADER -->
     <header class="top-header">
-      <div class="header-titles">
-        <h2>Your Local Neighbourhood 🏘️</h2>
-        <p class="subtitle">Showing shops registered in your pincode.</p>
+      <div>
+        <h2 class="brand-title">LocalMart</h2>
+        <p class="subtitle">Fresh products • Near you • Sustainable community</p>
       </div>
-      <button class="btn-danger logout-btn" (click)="logout()">Logout</button>
+      <div class="header-wallet-preview">
+        <span class="wallet-token">🪙</span> 
+        <strong>{{ walletBalance }} Tokens</strong>
+      </div>
     </header>
 
-    @if (isLoading) {
-      <p class="loading-text">Finding local shops near you...</p>
-    } @else if (shops.length === 0) {
-      <div class="empty-state content-card">
-        <h3>No shops found 🏜️</h3>
-      </div>
-    } @else {
-      <div class="shop-grid">
-        @for (shop of shops; track shop.id) {
-          <div class="shop-card content-card" [class.shop-closed]="shop.is_closed_today">
-            <div class="shop-header">
-              <div>
-                <h3>{{ shop.shop_name }}</h3>
-                <span class="category-badge">{{ shop.category }}</span>
-              </div>
+    <!-- TAB SECTION 1: SHOPS AND PRODUCTS -->
+    <section *ngIf="activeTab === 'shops'" class="tab-pane">
+      <div class="shops-layout">
+        <!-- SHOPS SELECTION PANEL -->
+        <div class="shops-main-list">
+          <div class="section-title-row">
+            <h3>Shops in {{ customerProfile?.area_name || 'Your Area' }}</h3>
+            <span class="item-count-indicator">{{ shops.length }} shops available</span>
+          </div>
+
+          <div *ngIf="shops.length === 0" class="empty-state-card">
+            <span class="empty-icon">🗺️</span>
+            <h4>No local shops in your area yet</h4>
+            <p>We are currently recruiting local vendors in pincode {{ customerProfile?.pincode }} to serve you soon!</p>
+          </div>
+
+          <div class="shop-grid">
+            <div 
+              *ngFor="let shop of shops" 
+              class="shop-card" 
+              [class.shop-closed]="shop.is_closed_today">
               
-            
-            
-            
-            <div style="display: flex; flex-direction: column; gap: 5px; text-align: right;">
-              <span class="score-badge" title="Platform Score">🏆 {{ shop.platform_score }}</span>
-              <span class="score-badge" title="Customer Reviews" style="color: #f39c12; border-color: #f39c12;">
-                ⭐ {{ shop.average_rating }} <small style="color: #888;">({{ shop.review_count }})</small>
-              </span>
+              <!-- Closed Banner Overlay -->
+              <div *ngIf="shop.is_closed_today" class="closed-banner-tag">
+                Closed Today
+              </div>
+
+              <div class="shop-card-header">
+                <div>
+                  <h4 class="shop-title">{{ shop.shop_name }}</h4>
+                  <span class="category-badge btn-sm">{{ shop.category }}</span>
+                </div>
+                <div class="score-badge">
+                  ⭐ {{ shop.platform_score || 'N/A' }}/10
+                </div>
+              </div>
+
+              <div class="shop-card-meta">
+                <p>📍 {{ shop.locality }}</p>
+                <p>🚚 Delivery: ₹{{ shop.delivery_fee }} (Free over ₹{{ shop.free_delivery_threshold }})</p>
+              </div>
+
+              <!-- PRODUCT STOCK UNDER THE SHOP -->
+              <div class="shop-products-section" *ngIf="!shop.is_closed_today">
+                <h5 class="stock-title">Available Today:</h5>
+                
+                <div *ngIf="!shop.products || shop.products.length === 0" class="no-stock-msg">
+                  This shop hasn't updated its live inventory for today yet.
+                </div>
+
+                <div class="compact-product-grid">
+                  <div *ngFor="let item of shop.products" class="compact-product-row">
+                    <div class="product-info-col">
+                      <img 
+                        [src]="item.image_url || 'assets/default-product.png'" 
+                        class="product-thumb-image" 
+                        alt="{{ item.name }}"
+                        onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' width=\'50\' height=\'50\'><rect width=\'100%\' height=\'100%\' fill=\'%23EFF6FF\'/><text x=\'50%\' y=\'50%\' font-size=\'20\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%232563EB\'>📦</text></svg>'">
+                      <div>
+                        <strong class="item-name">{{ item.name }}</strong>
+                        <span class="item-price">₹{{ item.base_price }} / {{ item.unit }}</span>
+                        <span class="stock-left-label" [class.low-stock]="item.quantity <= 5">
+                          Only {{ item.quantity }} {{ item.unit }} left
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="product-action-col">
+                      <input 
+                        type="number" 
+                        class="qty-input" 
+                        [(ngModel)]="item.selectedQty" 
+                        min="0.5" 
+                        [step]="item.unit === 'KG' ? '0.1' : '1'"
+                        max="{{ item.quantity }}" 
+                        placeholder="Qty">
+                      <button 
+                        class="btn btn-primary btn-sm add-cart-btn" 
+                        (click)="addToCart(shop, item)">
+                        🛒 Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
-              
+        </div>
+
+        <!-- CART & CHECKOUT SIDE PANEL -->
+        <aside class="cart-side-panel">
+          <div class="cart-card">
+            <h3 class="cart-heading">Your Cart</h3>
             
-            <p class="shop-meta">Last updated: {{ shop.stock_last_updated | date:'short' }}</p>
+            <div *ngIf="cart.length === 0" class="empty-cart-state">
+              <span class="cart-empty-icon">🛒</span>
+              <p>Your cart is empty. Add fresh items from nearby shops!</p>
+            </div>
 
-            <p class="shop-meta">
-              Delivery: ₹{{ shop.delivery_fee }} (Free over ₹{{ shop.free_delivery_threshold }})
-            </p>
-
-            @if (shop.is_closed_today) {
-              <div class="closed-banner">Shop is Closed Today</div>
-            } @else {
-              <div class="stock-section">
-                <h4>Available Today</h4>
-                @if (shop.today_stock.length === 0) {
-                  <p class="empty-stock">Vendor hasn't updated stock today.</p>
-                } @else {
-                  <ul class="stock-list">
-                    @for (item of shop.today_stock; track item.id) {
-                      <li class="stock-item">
-                        <div class="item-details">
-                          <span class="item-name">{{ item.product_name }}</span>
-                          <span class="item-price">₹{{ item.base_price }}/{{ item.unit }}</span>
-                        </div>
-                        
-                        <div class="item-action">
-                          @if (item.is_sold_out) {
-                            <span class="badge-danger">Sold Out</span>
-                          } @else {
-                            <span class="item-qty">{{ item.quantity }} left</span>
-                            
-                            <!-- THE NEW QUANTITY SELECTOR -->
-                            <input type="number" class="qty-input" [(ngModel)]="item.selectedQty" min="1" [max]="item.quantity">
-                            
-                            <button class="btn-primary btn-sm ml-2" (click)="addToCart(shop, item)">Add</button>
-                          }
-                        </div>
-                      </li>
-                    }
-                  </ul>
-                }
+            <div *ngIf="cart.length > 0">
+              <div class="cart-shop-header">
+                Buying from: <strong>{{ cartVendorName }}</strong>
+                <button class="clear-cart-link" (click)="clearCart()">Clear Cart</button>
               </div>
-            }
+
+              <!-- Delivery Progress Nudge -->
+              <div class="nudge-banner" *ngIf="orderType === 'DELIVERY'">
+                <span *ngIf="subtotal < freeDeliveryThreshold">
+                  🚚 Add <strong>₹{{ freeDeliveryThreshold - subtotal }}</strong> more for <strong>FREE DELIVERY</strong>!
+                </span>
+                <span *ngIf="subtotal >= freeDeliveryThreshold" class="free-delivery-text">
+                  🎉 Congratulations! You qualify for <strong>FREE DELIVERY</strong>!
+                </span>
+              </div>
+
+              <!-- Cart List -->
+              <ul class="cart-items-list">
+                <li *ngFor="let item of cart" class="cart-item-row">
+                  <div>
+                    <strong>{{ item.product_name }}</strong>
+                    <span class="cart-item-meta">{{ item.cartQty }} x ₹{{ item.price }}</span>
+                  </div>
+                  <strong>₹{{ item.price * item.cartQty }}</strong>
+                </li>
+              </ul>
+
+              <!-- Delivery Options -->
+              <div class="form-group mt-3">
+                <label>Fulfillment Preference</label>
+                <select class="form-select" [(ngModel)]="orderType">
+                  <option value="DELIVERY">🏠 Home Delivery</option>
+                  <option value="PICKUP">🚶 Store Self-Pickup</option>
+                </select>
+              </div>
+
+              <!-- Delivery Address -->
+              <div class="form-group" *ngIf="orderType === 'DELIVERY'">
+                <label>Delivery Address <span class="required">*</span></label>
+                <textarea 
+                  class="form-control text-address" 
+                  rows="2" 
+                  [(ngModel)]="deliveryAddress" 
+                  placeholder="Enter complete building & street name"></textarea>
+                <p *ngIf="!deliveryAddress.trim()" class="validation-message">
+                  ⚠️ Address is required for home delivery orders.
+                </p>
+              </div>
+
+              <!-- Gamified Token Wallet Discount -->
+              <div class="gamified-tokens-card mt-3">
+                <div class="tokens-label">
+                  <strong>🎁 E-Wallet Discount Option</strong>
+                  <span class="token-balance-tiny">Available: {{ walletBalance }} tokens</span>
+                </div>
+                <p class="token-conversion-msg">Redeem tokens to save money! <strong>1 Token = ₹0.10 Discount</strong></p>
+                <div class="token-input-row mt-2">
+                  <input 
+                    type="number" 
+                    class="form-control token-qty-box" 
+                    [(ngModel)]="tokensToUse" 
+                    min="0" 
+                    [max]="walletBalance" 
+                    placeholder="0">
+                  <span class="discount-calc">Estimated Discount: <strong>-₹{{ (tokensToUse * 0.10) | number:'1.2-2' }}</strong></span>
+                </div>
+              </div>
+
+              <!-- Cost breakdown -->
+              <div class="summary-breakdown-box mt-3">
+                <div class="breakdown-row">
+                  <span>Subtotal:</span>
+                  <span>₹{{ subtotal }}</span>
+                </div>
+                <div class="breakdown-row">
+                  <span>Delivery Charges:</span>
+                  <span>₹{{ finalDeliveryFee }}</span>
+                </div>
+                <div class="breakdown-row token-discount-row" *ngIf="tokensToUse > 0">
+                  <span>Token Discount:</span>
+                  <span>-₹{{ tokenDiscount | number:'1.2-2' }}</span>
+                </div>
+                <hr class="summary-divider">
+                <div class="breakdown-row grand-total-row">
+                  <span>Grand Total:</span>
+                  <span class="total-price">₹{{ totalAmount | number:'1.2-2' }}</span>
+                </div>
+              </div>
+
+              <button 
+                class="btn btn-primary full-width mt-3 btn-lg checkout-btn" 
+                (click)="checkout()"
+                [disabled]="orderType === 'DELIVERY' && !deliveryAddress.trim()">
+                🔒 Confirm Order & Pay
+              </button>
+            </div>
           </div>
-        }
+        </aside>
       </div>
-    }
-  </main>
-</div>
-@if (showReviewModal) {
-  <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-    <div class="modal-content" style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-      <h3 style="margin-top: 0; color: #2c3e50;">Rate your experience! ⭐</h3>
-      <p style="color: #666; margin-bottom: 20px;">How was your order?</p>
-      
-      <div style="margin-bottom: 15px;">
-        <label style="font-weight: bold; font-size: 0.9rem;">Rating (1-5 stars):</label>
-        <div style="margin-bottom: 15px; display: flex; gap: 8px; justify-content: center;">
-          @for (star of [4-8]; track star) {
-            <span class="star-rating" 
-                  [class.active]="star <= reviewRating" 
-                  (click)="reviewRating = star">★</span>
-          }
+    </section>
+
+    <!-- TAB SECTION 2: DAILY DEMAND VOTING POLL -->
+    <section *ngIf="activeTab === 'poll'" class="tab-pane">
+      <div class="content-card">
+        <div class="gamification-announcement">
+          <div class="announcement-icon">🗳️</div>
+          <div>
+            <h3>Vote for Tomorrow's Neighborhood Stock!</h3>
+            <p>Tell vendors what you need stocked tomorrow. Every vote enters you directly into our <strong>Daily 11 PM Token Lottery Draw</strong> for cashback rewards! 🪙</p>
+          </div>
+        </div>
+
+        <div class="poll-selection-box mt-4">
+          <h4>Select items you need tomorrow:</h4>
+          
+          <div class="poll-items-grid mt-3">
+            <label *ngFor="let item of pollItems" class="poll-item-label">
+              <input 
+                type="checkbox" 
+                [checked]="selectedPollItems.has(item.id)" 
+                (change)="togglePollItem(item.id, $event)">
+              <div class="poll-item-card-inner">
+                <span class="poll-item-category">{{ item.category }}</span>
+                <span class="poll-item-name">{{ item.name }}</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="poll-actions mt-4">
+            <button class="btn btn-primary btn-lg" (click)="submitVote()">
+              🗳️ Cast Votes & Enter Lottery
+            </button>
+          </div>
         </div>
       </div>
-      
-      <div style="margin-bottom: 20px;">
-        <label style="font-weight: bold; font-size: 0.9rem;">Leave a comment (optional):</label>
-        <textarea [(ngModel)]="reviewText" rows="3" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc; font-family: inherit;"></textarea>
+    </section>
+
+    <!-- TAB SECTION 3: ORDER HISTORY & TRACKING -->
+    <section *ngIf="activeTab === 'orders'" class="tab-pane">
+      <div class="content-card">
+        <h3 class="section-title">Your Order History</h3>
+        
+        <div *ngIf="orders.length === 0" class="empty-state-card">
+          <span class="empty-icon">📦</span>
+          <h4>No orders placed yet</h4>
+          <p>Go to the shops tab to place your first order!</p>
+        </div>
+
+        <div class="orders-list">
+          <div *ngFor="let order of orders" class="order-wrapper-card">
+            
+            <!-- Order Header info -->
+            <div class="order-header-row">
+              <div>
+                <h4>Order #LM-{{ order.id }}</h4>
+                <p class="order-vendor">Shop: <strong>{{ order.vendor_name }}</strong></p>
+                <p class="order-time">{{ order.created_at | date:'medium' }}</p>
+              </div>
+              <div class="order-status-col">
+                <span class="status-badge" [class]="order.status.toLowerCase()">
+                  {{ order.status }}
+                </span>
+                <strong class="order-total-price">₹{{ order.total_amount }}</strong>
+              </div>
+            </div>
+
+            <!-- VISUAL STATUS PROGRESS BAR TIMELINE -->
+            <div class="order-timeline-flow mt-3">
+              <div class="timeline-step" [class.completed]="true">
+                <span class="step-dot"></span>
+                <span class="step-label">Ordered</span>
+              </div>
+              <div class="timeline-step" [class.completed]="order.status !== 'PENDING' && order.status !== 'REJECTED'">
+                <span class="step-dot"></span>
+                <span class="step-label">Accepted</span>
+              </div>
+              <div class="timeline-step" [class.completed]="order.status === 'READY' || order.status === 'COMPLETED'">
+                <span class="step-dot"></span>
+                <span class="step-label">Ready / Shipped</span>
+              </div>
+              <div class="timeline-step" [class.completed]="order.status === 'COMPLETED'">
+                <span class="step-dot"></span>
+                <span class="step-label">Completed</span>
+              </div>
+            </div>
+
+            <!-- Order Items list details -->
+            <div class="order-details-drawer mt-3">
+              <h5>Items Summary:</h5>
+              <ul class="order-items-compact">
+                <li *ngFor="let item of order.items">
+                  {{ item.product_name }} ({{ item.quantity }} units) @ ₹{{ item.price }} each
+                </li>
+              </ul>
+              <p class="delivery-address-footer mt-2" *ngIf="order.order_type === 'DELIVERY'">
+                <strong>📍 Destination Address:</strong> {{ order.delivery_address }}
+              </p>
+            </div>
+
+            <!-- Actions Panel (Confirm Delivery, Review Modal) -->
+            <div class="order-actions-footer mt-3">
+              <!-- If Order is Ready, allow confirmation -->
+              <button 
+                *ngIf="order.status === 'READY'" 
+                class="btn btn-secondary btn-sm" 
+                (click)="confirmDelivery(order)">
+                🤝 Confirm Handover / Delivery
+              </button>
+
+              <!-- Allow user reviews on completed orders -->
+              <button 
+                *ngIf="order.status === 'COMPLETED'" 
+                class="btn btn-primary btn-sm" 
+                (click)="reviewOrderId = order.id; showReviewModal = true">
+                ⭐ Write Shop Review
+              </button>
+            </div>
+
+          </div>
+        </div>
       </div>
+    </section>
+
+    <!-- TAB SECTION 4: WALLET BALANCE & TRANSACTIONS -->
+    <section *ngIf="activeTab === 'wallet'" class="tab-pane">
+      <div class="wallet-dashboard-layout">
+        
+        <!-- Premium loyalty card displaying balances -->
+        <div class="wallet-balance-hero">
+          <div class="hero-chip">LocalMart Loyalty Card</div>
+          <div class="hero-balance-section">
+            <span class="balance-gold-coin">🪙</span>
+            <div>
+              <h2 class="hero-balance">{{ walletBalance }}</h2>
+              <p class="hero-label">Available Reward Tokens</p>
+            </div>
+          </div>
+          <div class="hero-footer-rules">
+            <p>10 Tokens = ₹1.00 Discount • Accumulate tokens by participating in Daily Pincode Poll voting!</p>
+          </div>
+        </div>
+
+        <!-- Wallet transaction list logs -->
+        <div class="content-card transaction-log-card">
+          <div class="card-header">
+            <h3>Reward Activity Log</h3>
+          </div>
+
+          <div *ngIf="walletTransactions.length === 0" class="empty-state-card">
+            <p>No transactions yet. Complete your daily vote poll to earn tokens!</p>
+          </div>
+
+          <div class="transaction-history-table">
+            <div *ngFor="let tx of walletTransactions" class="transaction-log-row">
+              <div class="tx-details">
+                <strong class="tx-desc">{{ tx.description }}</strong>
+                <span class="tx-date">{{ tx.date | date:'shortDate' }}</span>
+              </div>
+              <div class="tx-amount" [class.earned]="tx.amount > 0" [class.spent]="tx.amount < 0">
+                {{ tx.amount > 0 ? '+' : '' }}{{ tx.amount }} Tokens
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- REVIEW OVERLAY MODAL -->
+<div class="modal-overlay" *ngIf="showReviewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Submit Shop Review</h3>
+      <button class="close-btn" (click)="closeReviewModal()">✕</button>
+    </div>
+    
+    <div class="modal-body">
+      <p class="subtitle">Your feedback keeps neighborhood vendors accountable and high-performing.</p>
       
-      <button class="btn-primary full-width" (click)="submitReview()">Submit Review</button>
-      <button class="btn-danger full-width mt-2" style="background: white; color: #666; border: 1px solid #ccc;" (click)="closeReviewModal()">Skip for now</button>
+      <!-- Interactive Star Rating Container -->
+      <div class="form-group mt-3">
+        <label>Platform Performance Rating</label>
+        <div class="stars-rating-container">
+          <span 
+            *ngFor="let star of starsArray" 
+            class="star-btn"
+            [class.active]="reviewRating >= star" 
+            (click)="reviewRating = star">
+            ★
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group mt-3">
+        <label>Your Review Comments</label>
+        <textarea 
+          class="form-control" 
+          rows="3" 
+          [(ngModel)]="reviewText" 
+          placeholder="What did you like or dislike about this order?"></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer mt-4">
+      <button class="btn btn-secondary btn-sm" (click)="closeReviewModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitReview()">Submit Review</button>
     </div>
   </div>
-}
+</div>

@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import ProductListCreateView, ProductDetailView, VendorProfileView, DailyStockManageView,ToggleShopClosedView,LocalShopsView ,PlaceOrderView, OrderListView ,CustomerProfileView
-from .views import UpdateOrderStatusView, CustomerConfirmDeliveryView,CustomerPollView, VendorPollChartDataView,SubmitReviewView, VendorReviewsListView
+from .views import UpdateOrderStatusView, CustomerConfirmDeliveryView,CustomerPollView, VendorPollChartDataView,SubmitReviewView, VendorReviewsListView,CustomerWalletHistoryView
 
 
 urlpatterns = [
@@ -29,5 +29,6 @@ urlpatterns = [
 
     path('reviews/', SubmitReviewView.as_view(), name='submit-review'),
     path('vendors/<int:vendor_id>/reviews/', VendorReviewsListView.as_view(), name='vendor-reviews'),
+    path('wallet/history/', CustomerWalletHistoryView.as_view(), name='wallet-history'),
 
 ]

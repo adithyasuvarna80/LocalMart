@@ -11,12 +11,16 @@ from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockS
 from .serializers import CustomerShopSerializer,CustomerProfileSerializer
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review,TokenWallet, TokenTransaction
 from .serializers import (
     ProductSerializer, VendorProfileSerializer, DailyStockSerializer, 
     CustomerShopSerializer, CustomerProfileSerializer, OrderSerializer,
-    PollItemSerializer, DailyVoteSerializer,ReviewSerializer
+    PollItemSerializer, DailyVoteSerializer,ReviewSerializer,TokenTransactionSerializer
 )
+from decimal import Decimal
+from django.db import transaction
+
+
 
 
 class ProductListCreateView(generics.ListCreateAPIView):
@@ -146,19 +150,88 @@ class LocalShopsView(APIView):
         serializer = CustomerShopSerializer(shops, many=True)
         return Response(serializer.data)
 
+
 class PlaceOrderView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request):
+        # 1. Verify user role first to prevent AttributeErrors
         if not hasattr(request.user, 'customer_profile'):
             return Response({"error": "Only customers can place orders."}, status=403)
-        
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
             
-            serializer.save(customer=request.user.customer_profile)
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+        customer = request.user.customer_profile
+        data = request.data
+        
+        vendor_id = data.get('vendor')
+        order_type = data.get('order_type')
+        subtotal = float(data.get('subtotal', 0.00))
+        delivery_fee = float(data.get('delivery_fee', 0.00))
+        tokens_used = int(data.get('tokens_used', 0))
+        delivery_address = data.get('delivery_address', '')
+
+        # 2. Process Token Wallet Deductions
+        discount_amount = 0.00
+        if tokens_used > 0:
+            wallet, created = TokenWallet.objects.get_or_create(customer=customer)
+            if wallet.balance < tokens_used:
+                return Response({"error": "Insufficient token balance"}, status=400)
+            
+            # Redemption calculation: 50 tokens = ₹5 discount
+            discount_amount = float(tokens_used) * 0.10
+            
+            # Deduct tokens and write the transaction ledger
+            wallet.balance -= tokens_used
+            wallet.save()
+            
+            TokenTransaction.objects.create(
+                customer=customer,
+                amount=-tokens_used,
+                transaction_type='REDEMPTION',
+                description=f"Redeemed {tokens_used} tokens for ₹{discount_amount:.2f} discount at checkout."
+            )
+            
+        # 3. Calculate Final Checkout Total
+        total_amount = max(0.00, subtotal + delivery_fee - discount_amount)
+        
+        # 4. Save the single order cleanly to your database
+        order = Order.objects.create(
+            customer=customer,
+            vendor_id=vendor_id,
+            order_type=order_type,
+            subtotal=subtotal,
+            delivery_fee=delivery_fee,
+            total_amount=total_amount,
+            delivery_address=delivery_address,
+            status='PENDING'
+        )
+        
+        # 5. Save items & deduct stock level quantities
+        for item in data.get('items', []):
+            product_id = item.get('product')
+            quantity = float(item.get('quantity'))
+            price = float(item.get('price'))
+            
+            OrderItem.objects.create(
+                order=order, 
+                product_id=product_id, 
+                quantity=quantity, 
+                price=price
+            )
+            
+            # Real-time stock decrement
+            today = timezone.now().date()
+            try:
+                stock = DailyStock.objects.get(product_id=product_id, date=today)
+                stock.quantity = max(0.00, float(stock.quantity) - quantity)
+                stock.is_sold_out = (stock.quantity <= 0)
+                stock.save()
+            except DailyStock.DoesNotExist:
+                pass
+                
+        # 6. Serialize the successfully created order and return it!
+        serializer = OrderSerializer(order)
+        return Response(serializer.data, status=201)
 
 class OrderListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -343,3 +416,17 @@ class VendorReviewsListView(APIView):
       
         reviews = Review.objects.filter(vendor_id=vendor_id).order_by('-created_at')
         return Response(ReviewSerializer(reviews, many=True).data)
+
+class CustomerWalletHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        customer = request.user.customer_profile
+        wallet, created = TokenWallet.objects.get_or_create(customer=customer)
+        transactions = TokenTransaction.objects.filter(customer=customer).order_by('-date')
+        
+        serializer = TokenTransactionSerializer(transactions, many=True)
+        return Response({
+            "wallet_balance": wallet.balance,
+            "transactions": serializer.data
+        })

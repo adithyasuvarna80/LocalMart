@@ -1,280 +1,394 @@
-<!-- MANDATORY DAILY STOCK GATE -->
-@if (needsStockUpdate) {
-  <div class="stock-gate-container">
-    <div class="stock-gate-card">
-      <h2>Good Morning! 🌅</h2>
-      <p>Please confirm your daily stock quantities before accessing your dashboard. We've pre-filled yesterday's numbers to save you time.</p>
-      
-      <div class="stock-list">
-        @for (item of dailyStock; track item.id; let i = $index) {
-          <div class="stock-row">
-            <div class="item-info">
-              <strong>{{ item.product_name }}</strong>
-            </div>
-             <div class="item-input" style="display: flex; gap: 15px; align-items: center;">
-                  <!-- Daily Price input Box -->
-                  <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="color: #28a745; font-size: 0.9rem; font-weight: 500;">₹</span>
-                    <input type="number" 
-                           [value]="item.base_price" 
-                           (input)="onPriceChange(i, $event)" 
-                           style="width: 75px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold; color: #28a745;" 
-                           min="1">
-                  </div>
-                  <!-- Daily Quantity input Box -->
-                  <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="color: #666; font-size: 0.9rem;">Qty:</span>
-                    <input type="number" 
-                           [value]="item.quantity" 
-                           (input)="onQuantityChange(i, $event)" 
-                           style="width: 75px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold;" 
-                           min="0">
-                  </div>
-                  </div>
-          </div>
-        }
-      </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button class="btn-primary full-width" (click)="submitStock()">Save & Open Shop</button>
-            <button class="btn-danger full-width" style="background: white;" (click)="toggleShopClosed()">Mark Shop Closed Today</button>
-          </div>
+<!-- STOCK GATE OVERLAY (Blocks App until stock updated) -->
+<div class="stock-gate-container" *ngIf="needsStockUpdate">
+  <div class="stock-gate-card">
+    <div class="gate-header">
+      <span class="gate-icon">🏬</span>
+      <h2>Live Daily Inventory Update</h2>
+      <p class="subtitle">Set your available stock levels before opening shop today. This prevents customer double-ordering.</p>
     </div>
+
+    <!-- Live Stock Grid inside Gate -->
+    <div class="stock-list">
+      <div *ngFor="let item of dailyStock; let idx = index" class="stock-row">
+        <div class="item-info">
+          <strong>{{ item.product_name }}</strong>
+          <span class="price-indicator">Base Price: ₹{{ item.base_price }} / {{ item.unit }}</span>
+        </div>
+        <div class="item-input">
+          <input 
+            type="number" 
+            class="item-qty-input" 
+            [value]="item.quantity" 
+            (input)="onQuantityChange(idx, $event)" 
+            min="0" 
+            placeholder="Qty">
+          <span class="unit-tag">{{ item.unit }}</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary full-width mt-4 btn-lg" (click)="submitStock()">
+      💾 Open Shop & Publish Live Stock
+    </button>
   </div>
-}@else{
-  <div class="dashboard-layout">
+</div>
+
+<!-- MAIN DASHBOARD CONTENT -->
+<div class="dashboard-container" *ngIf="!needsStockUpdate">
   
-  <!-- SIDEBAR: Profile & Navigation -->
+  <!-- LEFT SIDEBAR: PROFILE & HEALTH MONITOR -->
   <aside class="sidebar">
     <div class="profile-card">
-      <div class="avatar">🏪</div>
-      <h3 class="shop-name">{{ vendorProfile.shop_name }}</h3>
+      <div class="avatar-circle">
+        {{ vendorProfile?.shop_name ? vendorProfile.shop_name.charAt(0).toUpperCase() : 'V' }}
+      </div>
+      <h3 class="shop-name">{{ vendorProfile?.shop_name }}</h3>
       <p class="email">{{ userEmail }}</p>
       
-      <div class="location-badge">
-        📍 {{ vendorProfile.locality }} - {{ vendorProfile.pincode }}
-      </div>
-      
-
-      <div class="score-box">
-        <span class="score-label">Platform Score</span>
-        <strong class="score-value">{{ vendorProfile.platform_score }} <small>/ 10</small></strong>
-      </div>
-       <div class="score-box mt-2">
-        <span class="score-label">Demerit Points</span>
-        <span class="score-value" style="color: #dc3545;">{{ vendorProfile.demerit_points || 0 }}</span>
+      <div class="location-badge mt-2">
+        📍 {{ vendorProfile?.locality }} ({{ vendorProfile?.pincode }})
       </div>
     </div>
 
-        <nav class="side-nav" style="flex-grow: 1; overflow-y: auto;">
-        <a (click)="switchTab('live-stock')" class="nav-item" [class.active]="activeTab === 'live-stock'" style="cursor: pointer;">📦 Today's Live Stock</a>
-        <a (click)="switchTab('orders')" class="nav-item" [class.active]="activeTab === 'orders'" style="cursor: pointer;">🚚 Live Orders</a>
-        <a (click)="switchTab('catalogue')" class="nav-item" [class.active]="activeTab === 'catalogue'" style="cursor: pointer;">📋 Product Catalogue</a>
-        <a (click)="switchTab('demand')" class="nav-item" [class.active]="activeTab === 'demand'" style="cursor: pointer;">📊 Area Demand Poll</a>
-        <a (click)="switchTab('reviews')" class="nav-item" [class.active]="activeTab === 'reviews'" style="cursor: pointer;">⭐ Customer Reviews</a>
-      </nav>
-
-      <!-- Logout Button (Anchored to bottom) -->
-      <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid #eee;">
-        <button class="logout-btn full-width" (click)="logout()">Logout</button>
+    <!-- PLATFORM HEALTH MODULES (For Examiners) -->
+    <div class="health-metrics-box">
+      <!-- Platform Score -->
+      <div class="metric-row">
+        <span class="metric-label">Platform Score:</span>
+        <span class="score-value-badge" [class.excellent]="+vendorProfile?.platform_score >= 8">
+          ⭐ {{ vendorProfile?.platform_score }}/10
+        </span>
       </div>
 
+      <!-- Demerit Tracker -->
+      <div class="metric-row mt-2">
+        <span class="metric-label">Demerit Points:</span>
+        <span class="demerit-badge" [class.danger]="+vendorProfile?.demerit_points > 0">
+          ⚠️ {{ vendorProfile?.demerit_points || '0' }} / 3
+        </span>
+      </div>
+      <p class="demerit-help-text mt-2" *ngIf="+vendorProfile?.demerit_points > 0">
+        *If Demerit Points reach 3, your shop profile will be flagged or suspended.
+      </p>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="side-nav">
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'live-stock'" 
+        (click)="activeTab = 'live-stock'">
+        📊 Live Daily Stock
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'products'" 
+        (click)="activeTab = 'products'">
+        🛍️ Product Catalog
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'orders'" 
+        (click)="activeTab = 'orders'">
+        📦 Active Orders
+      </button>
+      <button 
+        class="nav-btn" 
+        [class.active]="activeTab === 'reviews'" 
+        (click)="activeTab = 'reviews'">
+        ⭐ Customer Reviews
+      </button>
+      <!-- ADDED POLL TAB -->
+      <button
+  class="nav-btn"
+  [class.active]="activeTab === 'polls'"
+  (click)="switchTab('polls')">
+  🗳️ Neighborhood Polls
+</button>
+    </nav>
+
+    <!-- LOGOUT -->
+    <button class="logout-btn mt-4" (click)="logout()">
+      🚪 Log Out
+    </button>
   </aside>
 
-  <!-- MAIN CONTENT AREA -->
+  <!-- MAIN DISPLAYS -->
   <main class="main-content">
-      <!-- MODULE 5: NUDGE BANNER -->
-      @if (vendorProfile.needs_stock_nudge && !isClosedToday) {
-        <div style="background: #fff3cd; color: #856404; padding: 15px 20px; border-radius: 8px; border-left: 5px solid #ffc107; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-          <strong style="font-size: 1.2rem;">⚠️ Stock Update Required:</strong> 
-          <span>It has been over 12 hours since your last update. Please update your stock now to avoid a demerit point.</span>
-        </div>
-      }
+    
+    <!-- TOP STATUS HEADER -->
     <header class="top-header">
-      <h2>Vendor Dashboard</h2>
-      <p class="subtitle">Manage your stock, orders, and shop performance.</p>
+      <div>
+        <h2>Vendor Portal</h2>
+        <p class="subtitle">Live Neighborhood Commerce Operations</p>
+      </div>
+
+      <!-- SHOP OPEN/CLOSE TOGGLE SWITCH -->
+      <div class="shop-status-toggle">
+        <span class="status-indicator-text">
+          Status: <strong>{{ isClosedToday ? '🔴 Closed Today' : '🟢 Open for Business' }}</strong>
+        </span>
+        <button 
+          class="btn btn-secondary btn-sm" 
+          (click)="toggleShopClosed()">
+          🔄 Toggle Shop Status
+        </button>
+      </div>
     </header>
-     @if (activeTab === 'live-stock') {
-        <div id="live-stock" class="content-card">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3>📦 Today's Live Stock & Daily Rates</h3>
-            <button class="btn-primary" (click)="saveLiveStock()">Save Stock & Prices</button>
-          </div>
-          
-          <div class="product-grid" style="display: flex; flex-direction: column; gap: 12px;">
-            @for (item of dailyStock; track item.id; let i = $index) {
-              <div class="product-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa;">
-                <div class="product-info">
-                  <span class="product-name" style="font-weight: bold; font-size: 1.1rem; color: #333;">{{ item.product_name }}</span>
-                  <span class="product-unit" style="color: #7f8c8d; font-size: 0.85rem;">Unit: {{ item.unit }}</span>
-                </div>
-                
-                <div style="display: flex; gap: 20px; align-items: center;">
-                  <!-- Live Price Update Input -->
-                  <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="color: #28a745; font-weight: bold; font-size: 1rem;">Rate: ₹</span>
-                    <input type="number" 
-                           [value]="item.base_price" 
-                           (input)="onPriceChange(i, $event)" 
-                           style="width: 85px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold; color: #28a745;" 
-                           min="1">
-                  </div>
-                  
-                  <!-- Live Stock Update Input -->
-                  <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="color: #495057; font-weight: 500; font-size: 0.95rem;">Stock Level:</span>
-                    <input type="number" 
-                           [value]="item.quantity" 
-                           (input)="onQuantityChange(i, $event)" 
-                           style="width: 85px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-weight: bold;" 
-                           min="0">
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
 
-    <!-- SECTION: Product Catalogue -->
-      @if (activeTab === 'catalogue') {
-    <section id="catalogue" class="content-card">
-      <div class="card-header">
-        <h3>Add New Product</h3>
-      </div>
-      
-      <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="inline-form">
-        <div class="form-group">
-          <input type="text" formControlName="name" placeholder="E.g., Tomato, Bread" required>
-        </div>
-        <div class="form-group">
-          <select formControlName="unit">
-            <option value="KG">Kilogram (KG)</option>
-            <option value="LITRE">Litre</option>
-            <option value="PIECE">Piece</option>
-            <option value="DOZEN">Dozen</option>
-            <option value="GRAM">Gram</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <input type="number" formControlName="base_price" placeholder="Price (₹)" required>
-        </div>
-        <button type="submit" class="btn-primary" [disabled]="productForm.invalid">+ Add</button>
-      </form>
-
-      <hr class="divider">
-
-      <div class="card-header">
-        <h3>My Permanent Catalogue</h3>
-      </div>
-      
-      <div class="product-grid">
-        @if (products.length === 0) {
-          <p class="empty-state">Your catalogue is empty. Add your first product above.</p>
-        } @else {
-          @for (product of products; track product.id) {
-            <div class="product-item">
-              <div class="product-details">
-                <span class="product-name">{{ product.name }}</span>
-                <span class="product-price">₹{{ product.base_price }} / {{ product.unit }}</span>
-              </div>
-              <button class="btn-danger" (click)="deleteProduct(product.id)">Delete</button>
-            </div>
-          }
-        }
-      </div>
-      </section>
-      }
-     
-      <!-- LIVE ORDERS BOARD -->
-         @if (activeTab === 'orders'){
-    <div class="content-card mt-4">
-      <div class="card-header">
-        <h3>Live Orders 📦</h3>
-      </div>
-
-      @if (orders.length === 0) {
-        <p class="empty-state">No orders yet.</p>
-      } @else {
-        <div class="product-grid">
-          @for (order of orders; track order.id) {
-            <div class="product-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-              
-              <div style="display: flex; justify-content: space-between; width: 100%;">
-                <strong style="font-size: 1.1rem;">#{{ order.id }} - {{ order.order_type }}</strong>
-                <span style="font-weight: bold; color: #007bff;">{{ order.status }}</span>
-              </div>
-              <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-              <p style="margin: 0; color: #666;">Subtotal: ₹{{ order.subtotal }} | Total: ₹{{ order.total_amount }}</p>
-
-              <!-- Action Buttons based on Status -->
-              <div style="display: flex; gap: 10px; margin-top: 10px;">
-                @if (order.status === 'PENDING') {
-                  <button class="btn-primary" style="padding: 5px 10px;" (click)="updateOrderStatus(order.id, 'ACCEPTED')">Accept</button>
-                  <button class="btn-danger" (click)="updateOrderStatus(order.id, 'REJECTED')">Reject</button>
-                }
-                @if (order.status === 'ACCEPTED') {
-                  <button class="btn-primary" style="padding: 5px 10px;" (click)="updateOrderStatus(order.id, 'READY')">Mark as Ready / Dispatched</button>
-                }
-              </div>
-
-              
-            </div>
-          }
-        </div>
-      }
-
-
-    </div>
-  }
-
-     <!-- VENDOR DEMAND CHART -->
-      @if (activeTab === 'demand') {
-    <div class="content-card mt-4">
-      <div class="card-header">
-        <h3>📊 Live Area Demand in {{ vendorProfile.locality }}</h3>
-      </div>
-      <div style="position: relative; height: 300px; width: 100%;">
-        <canvas id="demandChart"></canvas>
+    <!-- ACTIVE STOCK NUDGE WARNING (If backend triggers stock nudge) -->
+    <div class="nudge-alert-banner" *ngIf="vendorProfile?.needs_stock_nudge">
+      <span class="alert-pulse">🔔</span>
+      <div>
+        <strong>Attention: Inactive Inventory Warning!</strong>
+        <p>Your shop hasn't updated stock levels in 12+ hours. Please review and publish today's stock to prevent automatic demerits.</p>
       </div>
     </div>
-    
 
-  }
-
-          <!-- MODULE 4: RATINGS & REVIEWS -->
-            @if (activeTab === 'reviews') {
-        
-      <div class="content-card mt-4">
+    <!-- TAB 1: LIVE DAILY STOCK UPDATES -->
+    <section *ngIf="activeTab === 'live-stock'" class="tab-pane">
+      <div class="content-card">
         <div class="card-header">
-          <h3>Customer Reviews ⭐</h3>
+          <div>
+            <h3>Live Inventory Feed</h3>
+            <p class="subtitle">Quick-edit quantities and real-time pricing for today's market.</p>
+          </div>
+          <button class="btn btn-primary" (click)="submitStock()">
+            💾 Save & Sync Stock
+          </button>
+        </div>
+
+        <div *ngIf="dailyStock.length === 0" class="empty-state">
+          <p>Your product catalog is empty. Add items under "Product Catalog" to create live stock!</p>
+        </div>
+
+        <div class="stock-table-container" *ngIf="dailyStock.length > 0">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Unit Type</th>
+                <th>Selling Price (₹)</th>
+                <th>Today's Stock Level</th>
+                <th>Live Status Badge</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of dailyStock; let idx = index">
+                <td><strong>{{ item.product_name }}</strong></td>
+                <td><span class="unit-tag">{{ item.unit }}</span></td>
+                <td>
+                  <input 
+                    type="number" 
+                    class="table-cell-input price-box" 
+                    [value]="item.base_price" 
+                    (change)="onPriceChange(idx, $event)" 
+                    min="0" 
+                    step="0.01">
+                </td>
+                <td>
+                  <input 
+                    type="number" 
+                    class="table-cell-input qty-box" 
+                    [value]="item.quantity" 
+                    (change)="onQuantityChange(idx, $event)" 
+                    min="0">
+                </td>
+                <td>
+                  <span class="status-badge" [class.accepted]="+item.quantity > 5" [class.pending]="+item.quantity > 0 && +item.quantity <= 5" [class.rejected]="+item.quantity == 0">
+                    {{ +item.quantity == 0 ? 'Sold Out' : (+item.quantity <= 5 ? 'Low Stock' : 'In Stock') }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: PRODUCT CATALOG MANAGEMENT -->
+    <section *ngIf="activeTab === 'products'" class="tab-pane">
+      <div class="catalog-split-grid">
+        
+        <!-- Add Product Form Box -->
+        <div class="content-card">
+          <h3 class="form-title">➕ Add New Product</h3>
+          <p class="subtitle">Expand your shop catalog. Newly added products instantly appear on tomorrow's live stock sheets.</p>
+          
+          <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="mt-3">
+            <div class="form-group">
+              <label>Product Name</label>
+              <input type="text" formControlName="name" placeholder="e.g. Organic Brown Bread">
+            </div>
+
+            <div class="form-group">
+              <label>Inventory Counting Unit</label>
+              <select formControlName="unit">
+                <option value="KG">Kilogram (KG)</option>
+                <option value="LITRE">Litre (LITRE)</option>
+                <option value="PIECE">Piece (PIECE)</option>
+                <option value="DOZEN">Dozen (DOZEN)</option>
+                <option value="GRAM">Gram (GRAM)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Default Base Price (₹)</label>
+              <input type="number" formControlName="base_price" placeholder="e.g. 45" min="1">
+            </div>
+
+            <button type="submit" class="btn btn-primary full-width mt-2" [disabled]="!productForm.valid">
+              Create Product Listing
+            </button>
+          </form>
+        </div>
+
+        <!-- Catalog Items list Table -->
+        <div class="content-card">
+          <h3>Current Product Catalog</h3>
+          <p class="subtitle">All active master listings for your retail storefront.</p>
+
+          <div *ngIf="products.length === 0" class="empty-state">
+            <p>No products listing available. Add your first product using the form!</p>
+          </div>
+
+          <div class="catalog-items-grid mt-3" *ngIf="products.length > 0">
+            <div *ngFor="let prod of products" class="catalog-row-item">
+              <div>
+                <strong class="catalog-item-name">{{ prod.name }}</strong>
+                <span class="catalog-item-price">Base Rate: ₹{{ prod.base_price }} per {{ prod.unit }}</span>
+              </div>
+              <button class="btn btn-danger btn-sm" (click)="deleteProduct(prod.id)">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: ACTIVE ORDERS FULFILLMENT -->
+    <section *ngIf="activeTab === 'orders'" class="tab-pane">
+      <div class="content-card">
+        <h3>Active Order Pipeline</h3>
+        <p class="subtitle">Monitor incoming neighborhood purchases, accept queues, and manage shipments.</p>
+
+        <div *ngIf="orders.length === 0" class="empty-state">
+          <p>No customer orders in queue right now.</p>
+        </div>
+
+        <div class="orders-timeline mt-3" *ngIf="orders.length > 0">
+          <div *ngFor="let order of orders" class="order-pipeline-card">
+            <div class="pipeline-card-header">
+              <div>
+                <h4>Order ID: #LM-{{ order.id }}</h4>
+                <p class="order-customer-label">Buyer: <strong>{{ order.customer_name }}</strong></p>
+                <p class="order-date-text">{{ order.created_at | date:'medium' }}</p>
+              </div>
+              <div class="order-amount-col">
+                <span class="status-badge" [class]="order.status.toLowerCase()">
+                  {{ order.status }}
+                </span>
+                <strong class="price-heading">₹{{ order.total_amount }}</strong>
+              </div>
+            </div>
+
+            <!-- Items requested in order -->
+            <div class="pipeline-body mt-3">
+              <h5 class="items-summary-label">Requested Items:</h5>
+              <ul class="order-items-bullet-list">
+                <li *ngFor="let item of order.items">
+                  📦 <strong>{{ item.product_name }}</strong> — {{ item.quantity }} units @ ₹{{ item.price }}/unit
+                </li>
+              </ul>
+
+              <div class="delivery-address-footer mt-2" *ngIf="order.order_type === 'DELIVERY'">
+                <strong>📍 Fulfillment Address:</strong> {{ order.delivery_address }}
+              </div>
+            </div>
+
+            <!-- Action buttons per order status -->
+            <div class="pipeline-actions mt-3">
+              <div *ngIf="order.status === 'PENDING'">
+                <button class="btn btn-primary btn-sm" (click)="updateOrderStatus(order.id, 'ACCEPTED')">
+                  🟢 Accept Order
+                </button>
+                <button class="btn btn-danger btn-sm ml-2" (click)="updateOrderStatus(order.id, 'REJECTED')">
+                  ✕ Reject Order
+                </button>
+              </div>
+
+              <div *ngIf="order.status === 'ACCEPTED'">
+                <button class="btn btn-primary btn-sm" (click)="updateOrderStatus(order.id, 'READY')">
+                  🚚 Mark as Ready / Dispatched
+                </button>
+              </div>
+
+              <div *ngIf="order.status === 'READY'">
+                <p class="waiting-instruction">⏳ Waiting for customer pickup or delivery handover confirmation.</p>
+              </div>
+
+              <div *ngIf="order.status === 'COMPLETED'" class="completed-msg">
+                🎉 Order successfully delivered & completed!
+              </div>
+
+              <div *ngIf="order.status === 'REJECTED'" class="rejected-msg">
+                ❌ Order rejected.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CUSTOMER REVIEWS FEEDBACK -->
+    <section *ngIf="activeTab === 'reviews'" class="tab-pane">
+      <div class="content-card">
+        <h3>Store Performance & Customer Reviews</h3>
+        <p class="subtitle">Direct, unedited neighborhood ratings used to calculate your Platform Score.</p>
+
+        <div *ngIf="reviews.length === 0" class="empty-state">
+          <p>No reviews posted yet. Keep selling high-quality products to collect feedback!</p>
+        </div>
+
+        <div class="reviews-feed-container mt-3" *ngIf="reviews.length > 0">
+          <div *ngFor="let rev of reviews" class="review-feedback-card">
+            <div class="review-card-header">
+              <div class="star-rating-box">
+                <!-- Inline safe rating loop (fixes the 1-star rendering) -->
+                <span class="filled-star" *ngFor="let star of [1-5]">
+                  {{ rev.rating >= star ? '★' : '☆' }}
+                </span>
+                <span class="score-number">({{ rev.rating }} / 5)</span>
+              </div>
+              <span class="review-date">{{ rev.created_at | date:'shortDate' }}</span>
+            </div>
+            <!-- Handled the empty quotes placeholder fallback elegantly -->
+            <p class="review-text-content mt-2">
+              "{{ rev.text || 'No written feedback comments left.' }}"
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: NEIGHBORHOOD DEMAND (POLL CHART) - Renders safely via [hidden] layout -->
+    <section [hidden]="activeTab !== 'polls'" class="tab-pane">
+      <div class="content-card">
+        <div class="card-header">
+          <div>
+            <h3>Neighborhood Poll Results</h3>
+            <p class="subtitle">Live voting analytics across your region (Pincode: {{ vendorProfile?.pincode }}). Prepare stock based on local customer demand!</p>
+          </div>
         </div>
         
-        @if (reviews.length === 0) {
-          <p class="empty-state">No reviews yet. Fulfil orders to earn them!</p>
-        } @else {
-          <div style="display: flex; flex-direction: column; gap: 15px;">
-            @for (review of reviews; track review.id) {
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                  <strong style="color: #2c3e50;">{{ review.customer_name }}</strong>
-                  <span style="color: #f39c12; font-weight: bold;">{{ review.rating }} / 5</span>
-                </div>
-                <p style="margin: 0 0 10px 0; color: #555; font-size: 0.95rem;">
-                  {{ review.text || 'No written comment provided.' }}
-                </p>
-                <small style="color: #999; font-size: 0.8rem;">Reviewed on: {{ review.created_at | date:'medium' }}</small>
-              </div>
-            }
-          </div>
-        }
+        <!-- Live Chart Canvas Area -->
+        <div class="chart-container mt-4" style="position: relative; height: 320px; width: 100%;">
+          <canvas id="pollChart"></canvas>
+        </div>
       </div>
-    
-    }
-    
-
+    </section>
 
   </main>
 </div>
-      }
-

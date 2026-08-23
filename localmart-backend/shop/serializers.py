@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Product, DailyStock
 from authentication.models import Vendor,Customer
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review
+from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review,TokenTransaction
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -117,11 +117,16 @@ class OrderSerializer(serializers.ModelSerializer):
 class CustomerProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     name = serializers.CharField(source='user.first_name', read_only=True)
-  
+    wallet_balance = serializers.SerializerMethodField()  
 
     class Meta:
         model = Customer
-        fields = ['name', 'email', 'pincode', 'area_name']
+        fields = ['id', 'email', 'name', 'pincode', 'area_name', 'wallet_balance']
+
+    def get_wallet_balance(self, obj):
+        from .models import TokenWallet
+        wallet, created = TokenWallet.objects.get_or_create(customer=obj)
+        return wallet.balance
 
 class PollItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -144,3 +149,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'order', 'vendor', 'customer', 'customer_name', 'rating', 'text', 'created_at']
         read_only_fields = ['order', 'vendor', 'customer']
+
+class TokenTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TokenTransaction
+        fields = ['id', 'amount', 'transaction_type', 'description', 'date']

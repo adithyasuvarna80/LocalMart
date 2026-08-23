@@ -4,11 +4,11 @@ import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
 import Chart from 'chart.js/auto';
 import { DatePipe } from '@angular/common';
-
+import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-vendor-dashboard',
   standalone: true,
-  imports: [ReactiveFormsModule,DatePipe],
+  imports: [ReactiveFormsModule,DatePipe,CommonModule],
   templateUrl: './vendor-dashboard.html',
   styleUrl: './vendor-dashboard.css',
 })
@@ -65,7 +65,7 @@ export class VendorDashboard implements OnInit {
 
         // 2. Reload both stock levels AND the profile state (clears the nudge in UI!)
         this.loadDailyStock();
-        this.loadProfile(); // <-- CRITICAL: Resets needs_stock_nudge and stock_last_updated
+        this.loadProfile(); 
         
         this.cdr.detectChanges();
         alert('Live stock updated successfully! ✅');
@@ -255,7 +255,7 @@ export class VendorDashboard implements OnInit {
       this.chart.destroy();
     }
 
-    const ctx = document.getElementById('demandChart') as HTMLCanvasElement;
+    const ctx = document.getElementById('pollChart') as HTMLCanvasElement;
     if (!ctx) return;
 
     this.chart = new Chart(ctx, {
@@ -291,20 +291,23 @@ export class VendorDashboard implements OnInit {
     });
   }
   loadReviews(vendorId: number) {
-    this.shopService.getVendorReviews(vendorId).subscribe({
-      next: (data) => {
-        this.reviews = data;
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Failed to load reviews', err)
-    });
-  }
+  this.shopService.getVendorReviews(vendorId).subscribe({
+    next: (data) => {
+
+      console.log("Reviews received:", data);
+
+      this.reviews = data;
+      this.cdr.detectChanges();
+    },
+    error: (err) => console.error(err)
+  });
+}
     switchTab(tab: string) {
     this.activeTab = tab;
     this.cdr.detectChanges(); // 1. Force Angular to update the DOM immediately
 
     // 2. If switching to the demand poll tab, trigger the chart loader!
-    if (tab === 'demand') {
+    if (tab === 'polls') {
       setTimeout(() => {
         this.loadChartData();
       }, 50); // A tiny 50ms delay guarantees the canvas element is fully active in the DOM

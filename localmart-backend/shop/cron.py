@@ -2,6 +2,10 @@ from django.utils import timezone
 from datetime import timedelta
 from authentication.models import Vendor
 from .models import Order, DailyStock
+import random
+from django.utils import timezone
+from authentication.models import Customer
+from .models import UserVote, TokenWallet, TokenTransaction
 
 def calculate_platform_scores():
     """Recalculates the platform score out of 10 for every vendor daily."""
@@ -78,3 +82,55 @@ def apply_demerits():
             updated_count += 1
             
     print(f"[{timezone.now()}] Assigned demerit points to {updated_count} vendors.")
+
+
+def run_lottery_draw():
+    """
+    Module 6: Daily 11 PM Token Lottery Draw.
+    Gathers all unique registered customer voters from today,
+    runs a weighted random reward, increments winners' wallet balances,
+    and logs the transactions.
+    """
+    today = timezone.now().date()
+    
+    # 1. Query 'customer_id' instead of 'user_id'
+    # 2. Exclude guest votes (where customer_id is null) using customer__isnull=False
+    customer_ids = UserVote.objects.filter(
+        date=today, 
+        customer__isnull=False
+    ).values_list('customer_id', flat=True).distinct()
+    
+    for customer_id in customer_ids:
+        try:
+            # Look up the customer record using their primary key ID
+            customer = Customer.objects.get(id=customer_id)
+        except Customer.DoesNotExist:
+            continue
+            
+        rand = random.random()
+        reward = 0
+        
+        # Weighted random lottery selection:
+        # 5% probability of 100 tokens, 20% probability of 1 to 5 tokens, 75% of 0 tokens
+        if rand < 0.05:
+            reward = 100
+            desc = "🎉 Rare Jackpot! Won 100 tokens in the daily poll lottery draw."
+        elif rand < 0.25:  # 0.05 + 0.20
+            reward = random.randint(1, 5)
+            desc = f"🪙 Won {reward} tokens in the daily poll lottery draw."
+        else:
+            reward = 0
+            
+        if reward > 0:
+            # Fetch or create the wallet dynamically
+            wallet, created = TokenWallet.objects.get_or_create(customer=customer)
+            wallet.balance += reward
+            wallet.save()
+            
+            # Log the transaction
+            TokenTransaction.objects.create(
+                customer=customer,
+                amount=reward,
+                transaction_type='EARNING',
+                description=desc
+            )

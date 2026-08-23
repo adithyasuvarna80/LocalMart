@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from authentication.models import Vendor, Customer 
+from django.db import models
+from django.utils import timezone
 
 class Product(models.Model):
     UNIT_CHOICES = (
@@ -115,3 +117,24 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.rating} Stars by {self.customer.user.first_name} for {self.vendor.shop_name}"
+
+class TokenWallet(models.Model):
+    customer = models.OneToOneField('authentication.Customer', on_delete=models.CASCADE, related_name='wallet')
+    balance = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.customer.user.email}'s Wallet - {self.balance} Tokens"
+
+class TokenTransaction(models.Model):
+    TRANSACTION_TYPES = (
+        ('EARNING', 'Lottery Win'),
+        ('REDEMPTION', 'Checkout Discount'),
+    )
+    customer = models.ForeignKey('authentication.Customer', on_delete=models.CASCADE, related_name='token_transactions')
+    amount = models.IntegerField()  # Positive for earnings, negative for redemptions
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    description = models.CharField(max_length=255)
+    date = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.customer.user.email} | {self.amount} | {self.transaction_type}"

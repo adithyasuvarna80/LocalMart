@@ -85,6 +85,9 @@ export class ShopService {
   getVendorReviews(vendorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/vendors/${vendorId}/reviews/`);
   }
+  getWalletHistory(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/wallet/history/`);
+  }
 
 }
 

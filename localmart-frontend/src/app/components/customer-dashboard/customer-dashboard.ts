@@ -2,12 +2,13 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms'; 
-import { DatePipe } from '@angular/common'; 
+import { DatePipe,DecimalPipe } from '@angular/common'; 
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-customer-dashboard',
   standalone: true,
-  imports: [FormsModule,DatePipe], 
+  imports: [FormsModule,DatePipe,DecimalPipe,CommonModule], 
   templateUrl: './customer-dashboard.html',
   styleUrl: './customer-dashboard.css',
 })
@@ -38,11 +39,20 @@ export class CustomerDashboard implements OnInit {
   reviewRating: number = 5;
   reviewText: string = '';
 
+  walletBalance: number = 0;
+walletTransactions: any[] = [];
+tokensToUse: number = 0;
+activeTab: string = 'shops'; 
+
+starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
+
   ngOnInit() {
     this.loadProfile();
     this.loadLocalShops();
     this.loadOrders();
     this.loadPollItems();
+    this.loadWalletHistory();
+
   }
 
   loadProfile() {
@@ -138,49 +148,60 @@ export class CustomerDashboard implements OnInit {
     if (this.orderType === 'PICKUP') return 0;
     return this.subtotal >= this.freeDeliveryThreshold ? 0 : this.deliveryFee;
   }
+  get tokenDiscount() {
+  return this.tokensToUse * 0.10; 
+}
 
   get totalAmount() {
-    return this.subtotal + this.finalDeliveryFee;
-  }
+  const amt = this.subtotal + this.finalDeliveryFee - this.tokenDiscount;
+  return amt < 0 ? 0 : amt;
+}
 
   checkout() {
-    if (this.cart.length === 0) return;
+  if (this.cart.length === 0) return;
+  
+  if (this.orderType === 'DELIVERY' && !this.deliveryAddress.trim()) {
+    alert('Please enter a delivery address.');
+    return;
+  }
 
-    if (this.orderType === 'DELIVERY' && !this.deliveryAddress.trim()) {
-   alert('Please enter a delivery address.');
-   return;
-}
+  if (this.tokensToUse > this.walletBalance) {
+    alert('You cannot redeem more tokens than your available balance.');
+    return;
+  }
 
 
 
 const orderData = {
+    vendor: this.cartVendorId,
+    order_type: this.orderType,
+    subtotal: this.subtotal,
+    delivery_fee: this.finalDeliveryFee,
+    tokens_used: this.tokensToUse, // <-- ADDED
+    total_amount: this.totalAmount,
+    delivery_address: this.deliveryAddress,
+    items: this.cart.map(item => ({
+      product: item.product,
+      quantity: item.cartQty,
+      price: item.price
+    }))
+  };
 
-  vendor: this.cartVendorId,
-  order_type: this.orderType,
-  subtotal: this.subtotal,
-  delivery_fee: this.finalDeliveryFee,
-  total_amount: this.totalAmount,
-  items: this.cart.map(item => ({
-    product: item.product,
-    quantity: item.cartQty,
-    price: item.price
-  }))
-};
-
-
-    this.shopService.placeOrder(orderData).subscribe({
-      next: (res) => {
-        alert('Order placed successfully!');
-        this.clearCart();
-        this.loadLocalShops(); 
-        this.loadOrders(); 
-      },
-      error: (err) => {
-        alert('Failed to place order.');
-        console.error(err);
-      }
-    });
-  }
+  this.shopService.placeOrder(orderData).subscribe({
+    next: (res) => {
+      alert(`Order placed successfully! Paid ₹${res.total_amount}.`);
+      this.clearCart();
+      this.tokensToUse = 0;
+      this.deliveryAddress = '';
+      this.loadOrders();
+      this.loadWalletHistory(); // <-- Refresh wallet numbers immediately
+    },
+    error: (err) => {
+      alert(err.error?.error || 'Failed to place order.');
+      console.error(err);
+    }
+  });
+}
 
   logout() { 
     localStorage.removeItem('access_token');
@@ -210,26 +231,26 @@ const orderData = {
   }
 
   submitVote() {
-    if (this.selectedPollItems.size === 0) {
-      alert("Please select at least one item to vote!");
-      return;
-    }
-    const itemIds = Array.from(this.selectedPollItems);
-    const pincode = this.customerProfile ? this.customerProfile.pincode : '000000';
-    
-     // Call the service to save votes in the database
-    this.shopService.submitPollVote(itemIds, pincode).subscribe({
-      next: (res) => {
-        alert("Your poll vote has been submitted successfully! 🪙 You've also been entered into today's 11 PM Token Lottery!");
-        this.selectedPollItems.clear(); // Clear selections after success
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        alert("Failed to submit your vote.");
-        console.error(err);
-      }
-    });
+  if (this.selectedPollItems.size === 0) {
+    alert("Please select at least one item to vote!");
+    return;
   }
+  const itemIds = Array.from(this.selectedPollItems);
+  const pincode = this.customerProfile ? this.customerProfile.pincode : '000000';
+
+  this.shopService.submitPollVote(itemIds, pincode).subscribe({
+    next: (res) => {
+      alert("Your daily poll vote has been submitted successfully! 🪙 You have been entered into today's 11 PM Token Lottery!");
+      this.selectedPollItems.clear();
+      this.loadWalletHistory();
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      alert("Failed to submit your vote.");
+      console.error(err);
+    }
+  });
+}
 
   confirmDelivery(order: any) {
     this.shopService.confirmDelivery(order.id).subscribe({
@@ -272,6 +293,17 @@ const orderData = {
     this.showReviewModal = false;
     this.reviewOrderId = null;
   }
+
+  loadWalletHistory() {
+  this.shopService.getWalletHistory().subscribe({
+    next: (data) => {
+      this.walletBalance = data.wallet_balance;
+      this.walletTransactions = data.transactions;
+      this.cdr.detectChanges();
+    },
+    error: (err) => console.error('Failed to load wallet data', err)
+  });
+}
 
   
 }
