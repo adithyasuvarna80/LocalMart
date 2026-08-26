@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Product, DailyStock
 from authentication.models import Vendor,Customer
@@ -16,11 +17,32 @@ class VendorProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     demerit_points = serializers.IntegerField(read_only=True)
     needs_stock_nudge = serializers.BooleanField(read_only=True)
+    stock_updated_today = serializers.SerializerMethodField()
 
     class Meta:
         model = Vendor
-        fields = ['id', 'user', 'shop_name', 'category', 'locality', 'pincode', 'delivery_fee', 'free_delivery_threshold', 'is_closed_today', 'platform_score', 'email', 'demerit_points','needs_stock_nudge']
+        fields = [
+            'id',
+            'user',
+            'shop_name',
+            'category',
+            'locality',
+            'pincode',
+            'delivery_fee',
+            'free_delivery_threshold',
+            'is_closed_today',
+            'platform_score',
+            'email',
+            'demerit_points',
+            'needs_stock_nudge',
+            'stock_updated_today'
+        ]
 
+    def get_stock_updated_today(self, obj):
+        if not obj.stock_last_updated:
+            return False
+
+        return obj.stock_last_updated.date() == timezone.now().date()
 
 class DailyStockSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -85,7 +107,7 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'vendor', 'vendor_name','customer_name', 'status', 'order_type', 'subtotal', 'delivery_fee', 'total_amount', 'created_at', 'items']
+        fields = ['id', 'vendor', 'vendor_name','customer_name', 'status', 'order_type', 'subtotal','delivery_address' ,'delivery_fee', 'total_amount', 'created_at', 'items']
         
 
     def create(self, validated_data):

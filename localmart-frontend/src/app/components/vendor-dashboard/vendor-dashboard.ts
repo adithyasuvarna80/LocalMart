@@ -5,6 +5,8 @@ import { Router } from '@angular/router';
 import Chart from 'chart.js/auto';
 import { DatePipe } from '@angular/common';
 import { CommonModule } from '@angular/common';
+import { ToastService, Toast } from '../../services/toast';
+
 @Component({
   selector: 'app-vendor-dashboard',
   standalone: true,
@@ -17,6 +19,7 @@ export class VendorDashboard implements OnInit {
   private shopService = inject(ShopService);
   private router = inject(Router);
    private cdr = inject(ChangeDetectorRef);
+    private toast = inject(ToastService)
 
   needsStockUpdate: boolean = true; 
   dailyStock: any[] = [];
@@ -51,78 +54,71 @@ export class VendorDashboard implements OnInit {
   ngOnInit() {
     this.loadProducts();
     this.loadProfile(); 
-    this.loadDailyStock();
+    
     this.loadOrders(); 
     this.loadChartData();
   }
 
     saveLiveStock() {
-    this.shopService.updateDailyStock(this.dailyStock).subscribe({
-      next: (res) => {
-        // 1. Ensure localStorage is updated for today
-        const today = new Date().toISOString().split('T')[0];
-        localStorage.setItem('last_stock_submit', today);
+  this.shopService.updateDailyStock(this.dailyStock).subscribe({
+    next: () => {
+      const today = new Date().toISOString().split('T')[0];
 
-        // 2. Reload both stock levels AND the profile state (clears the nudge in UI!)
-        this.loadDailyStock();
-        this.loadProfile(); 
-        
-        this.cdr.detectChanges();
-        alert('Live stock updated successfully! ✅');
-      },
-      error: (err) => {
-        alert('Failed to update live stock.');
-        console.error(err);
-      }
-    });
-  }
+      localStorage.setItem(
+        `last_stock_submit_${this.userEmail}`,
+        today
+      );
+
+      this.needsStockUpdate = false;
+
+      this.loadProfile();
+
+      this.toast.success('Live stock updated successfully! ✅');
+    },
+    error: (err) => {
+      this.toast.error('Failed to update live stock.');
+      console.error(err);
+    }
+  });
+}
 
 
   
-  toggleShopClosed() {
-   this.shopService.toggleShopClosed().subscribe({
+   toggleShopClosed() {
+    this.shopService.toggleShopClosed().subscribe({
       next: (res) => {
         this.isClosedToday = res.is_closed_today;
-        this.cdr.detectChanges();
-
         if (this.isClosedToday) {
-          this.needsStockUpdate = false; 
+          this.toast.warning('Your shop is set to CLOSED for today.');
+          this.needsStockUpdate = false; // Dismiss the blocker gate instantly
+          
+          // 🌟 FIX: Record today's closed status under the namespaced key to bypass on refresh
+          const today = new Date().toISOString().split('T')[0];
+          localStorage.setItem(`last_stock_submit_${this.userEmail}`, today);
+        } else {
+          this.toast.success('Your shop is now OPEN and accepting orders!');
         }
+        this.loadProfile();
       },
-      
       error: (err) => {
-        alert('Failed to update shop status.');
+        this.toast.error('Failed to toggle shop status.');
         console.error(err);
       }
     });
   }
 
+    loadDailyStock() {
+  this.shopService.getDailyStock().subscribe({
+    next: (data) => {
+      this.dailyStock = data;
+      this.cdr.detectChanges();
+    },
 
-     loadDailyStock() { 
-    this.shopService.getDailyStock().subscribe({ 
-      next: (data) => { 
-        this.dailyStock = data; 
-        
-        // 1. Bypass gate if catalog is empty, or if the shop is marked closed today
-        if (this.dailyStock.length === 0 || this.isClosedToday) { 
-          this.needsStockUpdate = false; 
-        } 
-        else {
-          const today = new Date().toISOString().split('T')[0];
-          const lastSubmit = localStorage.getItem('last_stock_submit'); 
-          
-          // 2. Bypass gate if stock has already been submitted today
-          if (lastSubmit === today) {
-            this.needsStockUpdate = false; 
-          }
-        }
-        
-        this.cdr.detectChanges(); 
-      }, 
-      error: (err) => console.error('Failed to load daily stock', err) 
-    }); 
-  }
-
+    error: (err) => {
+      console.error('Failed to load daily stock', err);
+    }
+  });
+}
  
   onQuantityChange(index: number, event: any) {
  
@@ -139,28 +135,40 @@ export class VendorDashboard implements OnInit {
 
  
    submitStock() {
-    this.shopService.updateDailyStock(this.dailyStock).subscribe({
-      next: (res) => {
-        // 1. Record today's date to unlock the gate on refresh
-        const today = new Date().toISOString().split('T')[0];
-        localStorage.setItem('last_stock_submit', today);
+  const stockPayload = this.dailyStock.map(item => ({
+    id: item.id,
+    quantity: item.quantity,
+    base_price: item.base_price
+  }));
 
-        // 2. Dismiss the morning gate overlay
-        this.needsStockUpdate = false;
+  this.shopService.updateDailyStock(stockPayload).subscribe({
+    next: () => {
+      const today = new Date().toISOString().split('T')[0];
 
-        // 3. Reload both stock levels and profile details
-        this.loadDailyStock();
-        this.loadProfile(); // <-- CRITICAL: Dismisses nudge banner & registers open status
-        
-        this.cdr.detectChanges();
-        alert('Morning stock saved successfully! Your shop is now open. 📦');
-      },
-      error: (err) => {
-        alert('Failed to save morning stock.');
-        console.error(err);
-      }
-    });
-  }
+      // Keep localStorage for compatibility/cache
+      localStorage.setItem(
+        `last_stock_submit_${this.userEmail}`,
+        today
+      );
+
+      this.needsStockUpdate = false;
+
+      this.loadProfile();
+
+      this.toast.success(
+        'Live daily inventory published and storefront is open!'
+      );
+    },
+
+    error: (err) => {
+      console.error('Failed to update stock:', err);
+
+      this.toast.error(
+        'Failed to update live stock. Please try again.'
+      );
+    }
+  });
+}
 
    loadProducts() {
     this.shopService.getProducts().subscribe({
@@ -174,19 +182,40 @@ export class VendorDashboard implements OnInit {
 
 
   
-  loadProfile() {
-    this.shopService.getVendorProfile().subscribe({
-      next: (data) => {
-        this.vendorProfile = data;
-        this.userEmail = data.email; 
-        this.isClosedToday = data.is_closed_today; 
-        this.cdr.detectChanges(); 
-        this.loadReviews(data.id);
-      },
-      error: (err) => console.error('Failed to load profile', err)
-    });
-  }
+   loadProfile() {
+  this.shopService.getVendorProfile().subscribe({
+    next: (data) => {
+      this.vendorProfile = data;
+      this.isClosedToday = data.is_closed_today;
 
+      this.userEmail =
+        data.email ||
+        localStorage.getItem('user_email') ||
+        'vendor@localmart.com';
+
+      console.log('Vendor:', data.shop_name);
+      console.log('Stock updated today:', data.stock_updated_today);
+      console.log('Needs stock nudge:', data.needs_stock_nudge);
+
+      // Daily stock gate
+      if (data.is_closed_today) {
+        this.needsStockUpdate = false;
+      } else {
+        this.needsStockUpdate = !data.stock_updated_today;
+      }
+
+      this.cdr.detectChanges();
+
+      // Load dependent data
+      this.loadDailyStock();
+      this.loadReviews(data.id);
+    },
+
+    error: (err) => {
+      console.error('Failed to load vendor profile', err);
+    }
+  });
+}
   onSubmit() {
     if (this.productForm.valid) {
       this.shopService.addProduct(this.productForm.value).subscribe({
@@ -207,7 +236,7 @@ export class VendorDashboard implements OnInit {
           this.products = this.products.filter(p => p.id !== productId);
         },
         error: (err) => {
-          alert('Failed to delete product.');
+          this.toast.error('Failed to delete product.');
           console.error(err);
         }
       });
@@ -228,15 +257,18 @@ export class VendorDashboard implements OnInit {
       next: (res) => {
         this.loadOrders(); 
       },
-      error: (err) => alert('Failed to update order status.')
+      error: (err) => this.toast.error('Failed to update order status.')
     });
   }
 
    logout() { 
     
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('role');
+    
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('user_email');
+
+  
     this.router.navigate(['/login']); 
   }
    loadChartData() {

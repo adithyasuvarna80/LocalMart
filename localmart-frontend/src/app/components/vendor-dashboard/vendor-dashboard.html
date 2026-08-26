@@ -27,9 +27,16 @@
       </div>
     </div>
 
-    <button class="btn btn-primary full-width mt-4 btn-lg" (click)="submitStock()">
-      💾 Open Shop & Publish Live Stock
-    </button>
+   <div class="gate-actions mt-4">
+      <button class="btn btn-primary full-width btn-lg" (click)="submitStock()">
+        💾 Open Shop & Publish Live Stock
+      </button>
+      
+      <!-- 🌟 Added clear bypass option for closed shops -->
+      <button class="btn btn-danger full-width btn-lg mt-2" (click)="toggleShopClosed()">
+        🚪 We are Closed Today
+      </button>
+    </div>
   </div>
 </div>
 

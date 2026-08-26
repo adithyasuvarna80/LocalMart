@@ -1,0 +1,229 @@
+.login-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* 1. Left showcase side panel */
+.showcase-side {
+  width: 55%;
+  background: linear-gradient(135deg, var(--dark-blue), var(--primary-blue));
+  color: var(--white);
+  padding: 60px 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.brand-badge-overlay {
+  align-self: flex-start;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.showcase-content {
+  margin: auto 0;
+}
+
+.brand-logo {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--white);
+  line-height: 1;
+}
+
+.brand-tagline {
+  font-family: var(--font-headings);
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 8px;
+}
+
+.brand-description {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-top: 16px;
+  max-width: 520px;
+}
+
+.feature-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.feature-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.feature-icon {
+  font-size: 1.75rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feature-item div {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-item strong {
+  font-size: 1rem;
+  color: var(--white);
+}
+
+.feature-item span {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.showcase-footer {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 20px;
+}
+
+/* 2. Right form side container panel */
+.form-side {
+  width: 45%;
+  background-color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-scroll-container {
+  width: 100%;
+  max-width: 480px;
+  padding: 40px;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.form-card-inner {
+  width: 100%;
+}
+
+.welcome-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--dark-blue);
+}
+
+/* Custom icon fields styling */
+.input-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-prefix-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-icon-wrapper input {
+  padding-left: 44px; /* Room for left icon */
+}
+
+.password-toggle-eye {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.1rem;
+}
+
+/* Invalid error states border flags */
+input.invalid {
+  border-color: var(--danger);
+  background-color: #fffefb;
+}
+
+input.invalid:focus {
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+/* Register choice links at the bottom */
+.register-routing-footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.register-routing-footer p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.register-choices {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.route-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: var(--transition-smooth);
+}
+
+.customer-choice {
+  color: var(--primary-blue);
+}
+
+.customer-choice:hover {
+  text-decoration: underline;
+}
+
+.vendor-choice {
+  color: var(--dark-blue);
+}
+
+.vendor-choice:hover {
+  text-decoration: underline;
+}
+
+.choice-divider {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* 3. Mobile responsiveness breaks */
+@media (max-width: 1024px) {
+  .showcase-side {
+    display: none; /* Hide illustrative side on tablet and phone */
+  }
+  .form-side {
+    width: 100%;
+    padding: 20px;
+  }
+}

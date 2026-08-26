@@ -110,8 +110,7 @@ def run_lottery_draw():
         rand = random.random()
         reward = 0
         
-        # Weighted random lottery selection:
-        # 5% probability of 100 tokens, 20% probability of 1 to 5 tokens, 75% of 0 tokens
+     
         if rand < 0.05:
             reward = 100
             desc = "🎉 Rare Jackpot! Won 100 tokens in the daily poll lottery draw."
@@ -122,12 +121,12 @@ def run_lottery_draw():
             reward = 0
             
         if reward > 0:
-            # Fetch or create the wallet dynamically
+        
             wallet, created = TokenWallet.objects.get_or_create(customer=customer)
             wallet.balance += reward
             wallet.save()
             
-            # Log the transaction
+           
             TokenTransaction.objects.create(
                 customer=customer,
                 amount=reward,

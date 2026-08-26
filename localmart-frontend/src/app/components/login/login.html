@@ -1,18 +1,132 @@
-<div class="login-container">
-  <h2>Welcome back to LocalMart</h2>
-  <p>Log in to access your neighbourhood marketplace.</p>
+<div class="login-wrapper">
   
-  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-    <input type="email" formControlName="email" placeholder="Email Address" required>
-    <input type="password" formControlName="password" placeholder="Password" required>
+  <!-- LEFT SIDE: BRAND SHOWCASE BILLBOARD (Hidden on mobile) -->
+  <aside class="showcase-side">
+    <div class="brand-badge-overlay">
+      <span class="badge-text">🏘️ Semester 5 Showcase</span>
+    </div>
     
-    <button type="submit" [disabled]="loginForm.invalid">Log In</button>
-  </form>
-  
-  <div class="register-links">
-    <p>New to LocalMart?</p>
+    <div class="showcase-content">
+      <h1 class="brand-logo">LocalMart</h1>
+      <p class="brand-tagline">Your Neighbourhood Marketplace</p>
+      <p class="brand-description">
+        Connect directly with local bakery, vegetable, dairy, and grocery vendors nearby. 
+        Vote on active community demand polls and earn reward tokens daily!
+      </p>
+
+      <!-- Key Value Highlights -->
+      <div class="feature-checklist">
+        <div class="feature-item">
+          <span class="feature-icon">🛍️</span>
+          <div>
+            <strong>Live Local Inventory</strong>
+            <span>See live, verified available stock sheets before ordering.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🗳️</span>
+          <div>
+            <strong>Neighborhood Daily Polls</strong>
+            <span>Tell vendors what you want stocked tomorrow in your pincode.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🪙</span>
+          <div>
+            <strong>Loyalty E-Wallet Gains</strong>
+            <span>Win lottery draws and claim direct checkout discounts.</span>
+          </div>
+        </div>
+      </div>
+    </div>
     
-    <button type="button" routerLink ="/register/customer">Register as Customer</button>
-    <button type="button"  routerLink ="/register/vendor">Register as Vendor</button>
-  </div>
+    <div class="showcase-footer">
+      <p>© 2026 LocalMart Inc. • Fresh products • Near you • Sustainable community</p>
+    </div>
+  </aside>
+
+  <!-- RIGHT SIDE: INTERACTIVE AUTH COMPONENT FORM -->
+  <main class="form-side">
+    <div class="form-scroll-container">
+      <div class="form-card-inner">
+        
+        <header class="form-header">
+          <h2 class="welcome-title">Welcome Back</h2>
+          <p class="subtitle text-muted">Log in to view live inventory and neighborhood transactions.</p>
+        </header>
+
+        <!-- Dynamic Form Fields -->
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form mt-4">
+          
+          <!-- Email Form Field group -->
+          <div class="form-group">
+            <label for="email">Registered Email Address</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">📧</span>
+              <input 
+                type="email" 
+                id="email" 
+                formControlName="email" 
+                placeholder="you@example.com"
+                [class.invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
+            </div>
+            
+            <!-- Real-time reactive warning alerts -->
+            <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span *ngIf="loginForm.get('email')?.errors?.['required']">Email is required to authenticate.</span>
+              <span *ngIf="loginForm.get('email')?.errors?.['email']">Please key in a valid email format.</span>
+            </div>
+          </div>
+
+          <!-- Password Form Field group -->
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">🔒</span>
+              <input 
+                [type]="isPasswordVisible ? 'text' : 'password'" 
+                id="password" 
+                formControlName="password" 
+                placeholder="Enter password securely"
+                [class.invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+              
+              <!-- Custom eye key-toggle action button -->
+              <button 
+                type="button" 
+                class="password-toggle-eye" 
+                (click)="togglePasswordVisibility()">
+                {{ isPasswordVisible ? '👁️' : '🙈' }}
+              </button>
+            </div>
+            
+            <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span>Password is required.</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg full-width mt-3" [disabled]="!loginForm.valid">
+            🔓 Authenticate & Log In
+          </button>
+        </form>
+
+        <!-- Contextual Register Navigation Route Links -->
+        <footer class="register-routing-footer">
+          <p>Don't have an active LocalMart account yet?</p>
+          <div class="register-choices mt-2">
+            <a routerLink="/register/customer" class="route-link customer-choice">
+              🛒 Join as Local Customer
+            </a>
+            <span class="choice-divider">or</span>
+            <a routerLink="/register/vendor" class="route-link vendor-choice">
+              🏬 Register local Shop
+            </a>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  </main>
+
 </div>

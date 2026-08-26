@@ -1,19 +1,28 @@
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { AuthService } from '../../services/auth';
+import { CommonModule } from '@angular/common'; // 👈 Enabled structural conditions
 import { Router, RouterLink } from '@angular/router';
+import { ToastService } from '../../services/toast'
+import { AuthService } from '../../services/auth';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule, 
+    RouterLink, 
+    CommonModule 
+  ],
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
-  private router = inject(Router); 
+  private router = inject(Router);
+  private toast = inject(ToastService);
+
+  isPasswordVisible: boolean = false; // 👈 Password toggle logic
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -28,8 +37,9 @@ export class LoginComponent {
           localStorage.setItem('refresh_token', res.refresh);
           localStorage.setItem('role', res.role);
 
-          alert('Login successful!');
+          this.toast.success('Welcome back to LocalMart! Logged in successfully.');
 
+          // Role-based routing logic [4]
           if (res.role === 'VENDOR') {
             this.router.navigate(['/vendor']);
           } else if (res.role === 'CUSTOMER') {
@@ -37,10 +47,14 @@ export class LoginComponent {
           }
         },
         error: (err) => {
-          alert('Login failed. Please check your credentials.');
+          this.toast.error('Authentication failed. Please verify your email and password.');
           console.error(err);
         }
       });
     }
+  }
+
+  togglePasswordVisibility() {
+    this.isPasswordVisible = !this.isPasswordVisible;
   }
 }

@@ -42,13 +42,15 @@ class VendorProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return self.request.user.vendor_profile
+       return self.request.user.vendor_profile
+  
+        
 
 
 class DailyStockManageView(APIView):
-    permission_classes = [IsAuthenticated]
+ permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+ def get(self, request):
         vendor = request.user.vendor_profile
         today = timezone.now().date()
         
@@ -65,38 +67,48 @@ class DailyStockManageView(APIView):
         serializer = DailyStockSerializer(stock_items, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        vendor = request.user.vendor_profile
-        
-        # Loop through updated rows sent from the Angular client
-        for item in request.data:
-            try:
-                stock_id = item.get('id')
-                qty = item.get('quantity', 0.00)
-                price = item.get('base_price') # <-- Read the new price payload
-                
-                stock_record = DailyStock.objects.get(id=stock_id, product__vendor=vendor)
-                
-                # 1. Save stock quantity and update the "Sold Out" status [6]
-                stock_record.quantity = float(qty)
-                stock_record.is_sold_out = (stock_record.quantity <= 0)
-                stock_record.save()
-                
-                # 2. Write price update to the master product table [2]
-                if price is not None:
-                    product = stock_record.product
-                    product.base_price = float(price)
-                    product.save()
-                    
-            except (DailyStock.DoesNotExist, ValueError, TypeError):
-                continue
-                
-        # Update timestamp to clear accountability soft nudges & demerit triggers [7]
-        vendor.stock_last_updated = timezone.now()
-        vendor.needs_stock_nudge = False
-        vendor.save()
-        
-        return Response({"message": "Stock quantities and daily rates successfully updated!"})
+ def post(self, request):
+    vendor = request.user.vendor_profile
+    updated_any = False
+
+    for item in request.data:
+        try:
+            stock_id = item.get('id')
+            qty = item.get('quantity', 0.00)
+            price = item.get('base_price')
+
+            stock_record = DailyStock.objects.get(
+                id=stock_id,
+                product__vendor=vendor
+            )
+
+            stock_record.quantity = float(qty)
+            stock_record.is_sold_out = (stock_record.quantity <= 0)
+            stock_record.save()
+
+            if price is not None:
+                product = stock_record.product
+                product.base_price = float(price)
+                product.save()
+
+            updated_any = True
+
+        except (DailyStock.DoesNotExist, ValueError, TypeError):
+            continue
+
+    if not updated_any:
+        return Response(
+            {"error": "No stock records were successfully updated."},
+            status=400
+        )
+
+    vendor.stock_last_updated = timezone.now()
+    vendor.needs_stock_nudge = False
+    vendor.save()
+
+    return Response({
+        "message": "Stock quantities and daily rates successfully updated!"
+    })
     
 
 class ToggleShopClosedView(APIView):

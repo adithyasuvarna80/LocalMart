@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms'; 
 import { DatePipe,DecimalPipe } from '@angular/common'; 
 import { CommonModule } from '@angular/common';
+import { ToastService, Toast } from '../../services/toast';
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -16,6 +17,7 @@ export class CustomerDashboard implements OnInit {
   private shopService = inject(ShopService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private toast = inject(ToastService)
 
 
   customerProfile: any = null; 
@@ -99,7 +101,7 @@ starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
 
   addToCart(shop: any, item: any) {
     if (item.selectedQty <= 0 || item.selectedQty > parseFloat(item.quantity)) {
-      alert("Please enter a valid quantity within the available stock.");
+      this.toast.warning("Please enter a valid quantity within the available stock.");
       return;
     }
 
@@ -131,6 +133,7 @@ starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
     }
 
     item.selectedQty = 1; 
+     this.toast.success(`Added ${item.selectedQty} ${item.unit} of ${item.name} to cart!`);
     this.cdr.detectChanges();
   }
 
@@ -161,12 +164,12 @@ starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
   if (this.cart.length === 0) return;
   
   if (this.orderType === 'DELIVERY' && !this.deliveryAddress.trim()) {
-    alert('Please enter a delivery address.');
+    this.toast.error('Please enter a delivery address.');
     return;
   }
 
   if (this.tokensToUse > this.walletBalance) {
-    alert('You cannot redeem more tokens than your available balance.');
+    this.toast.error('You cannot redeem more tokens than your available balance.');
     return;
   }
 
@@ -189,7 +192,7 @@ const orderData = {
 
   this.shopService.placeOrder(orderData).subscribe({
     next: (res) => {
-      alert(`Order placed successfully! Paid ₹${res.total_amount}.`);
+      this.toast.success(`Order placed successfully! Paid ₹${res.total_amount}.`);
       this.clearCart();
       this.tokensToUse = 0;
       this.deliveryAddress = '';
@@ -197,7 +200,7 @@ const orderData = {
       this.loadWalletHistory(); // <-- Refresh wallet numbers immediately
     },
     error: (err) => {
-      alert(err.error?.error || 'Failed to place order.');
+      this.toast.error(err.error?.error || 'Failed to place order.');
       console.error(err);
     }
   });
@@ -232,7 +235,7 @@ const orderData = {
 
   submitVote() {
   if (this.selectedPollItems.size === 0) {
-    alert("Please select at least one item to vote!");
+    this.toast.error("Please select at least one item to vote!");
     return;
   }
   const itemIds = Array.from(this.selectedPollItems);
@@ -240,13 +243,13 @@ const orderData = {
 
   this.shopService.submitPollVote(itemIds, pincode).subscribe({
     next: (res) => {
-      alert("Your daily poll vote has been submitted successfully! 🪙 You have been entered into today's 11 PM Token Lottery!");
+      this.toast.success("Your daily poll vote has been submitted successfully! 🪙 You have been entered into today's 11 PM Token Lottery!");
       this.selectedPollItems.clear();
       this.loadWalletHistory();
       this.cdr.detectChanges();
     },
     error: (err) => {
-      alert("Failed to submit your vote.");
+      this.toast.error("Failed to submit your vote.");
       console.error(err);
     }
   });
@@ -255,7 +258,9 @@ const orderData = {
   confirmDelivery(order: any) {
     this.shopService.confirmDelivery(order.id).subscribe({
       next: (res) => {
+        this.toast.success("Delivery confirmed! Thank you for shopping with LocalMart.");
         this.loadOrders();
+          
         
         
         this.reviewOrderId = order.id;
@@ -263,7 +268,7 @@ const orderData = {
         this.reviewText = '';
         this.showReviewModal = true; 
       },
-      error: (err) => alert('Failed to confirm delivery.')
+      error: (err) => this.toast.error('Failed to confirm delivery.')
     });
   }
 
@@ -278,12 +283,12 @@ const orderData = {
     
     this.shopService.submitReview(payload).subscribe({
       next: (res) => {
-        alert('Thank you for your review!');
+        this.toast.success('Thank you for your review!');
         this.closeReviewModal();
         this.loadLocalShops(); 
       },
       error: (err) => {
-        alert('Failed to submit review. You may have already reviewed this order.');
+        this.toast.error('Failed to submit review. You may have already reviewed this order.');
         console.error(err);
       }
     });

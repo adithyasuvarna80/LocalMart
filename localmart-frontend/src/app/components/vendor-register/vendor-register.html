@@ -1,35 +1,218 @@
-<div class="register-container">
-  <h2>Vendor Registration & Shop Setup</h2>
+<div class="register-wrapper">
   
-  <form [formGroup]="vendorForm" (ngSubmit)="onSubmit()">
-    <!-- Account Details -->
-    <h3>Account Details</h3>
-    <input type="email" formControlName="email" placeholder="Email Address" required>
-    <input type="password" formControlName="password" placeholder="Password" required>
-
-    <!-- Shop Setup Wizard -->
-    <h3>Shop Details</h3>
-    <input type="text" formControlName="shop_name" placeholder="Shop Name" required>
+  <!-- LEFT SIDE: VENDOR VALUE ADVANTAGES -->
+  <aside class="showcase-side">
+    <div class="brand-badge-overlay">
+      <span class="badge-text">🏬 Open Your Digital Store</span>
+    </div>
     
-    <select formControlName="category">
-      <option value="VEGETABLES">Vegetables</option>
-      <option value="BAKERY">Bakery</option>
-      <option value="DAIRY">Dairy</option>
-      <option value="GROCERY">Grocery</option>
-    </select>
+    <div class="showcase-content">
+      <h2 class="showcase-title">Empower Your Retail Business</h2>
+      <p class="showcase-subtitle">Sell directly to thousands of neighbors in your specific pincode.</p>
 
-    <input type="text" formControlName="locality" placeholder="Locality" required>
-    <input type="text" formControlName="pincode" placeholder="Pincode" required>
+      <div class="feature-checklist">
+        <div class="feature-item">
+          <span class="feature-icon">📈</span>
+          <div>
+            <strong>Maximize Local Demand</strong>
+            <span>View the live Daily Poll to see exactly what items customers want stocked tomorrow.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🔒</span>
+          <div>
+            <strong>Transparent Score System</strong>
+            <span>Maintain high operational standards, collect positive reviews, and boost your Platform Score.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🛡️</span>
+          <div>
+            <strong>Interactive Stock Protections</strong>
+            <span>Our daily Stock Gate and nudge alerts prevent accidental double-selling and demerits.</span>
+          </div>
+        </div>
+      </div>
+    </div>
     
-    <h3>Delivery Settings</h3>
-    <label>Delivery Fee (₹)</label>
-    <input type="number" formControlName="delivery_fee" required>
-    
-    <label>Free Delivery Threshold (₹)</label>
-    <input type="number" formControlName="free_delivery_threshold" required>
+    <div class="showcase-footer">
+      <p>© 2026 LocalMart Vendor Commerce Hub • Semester 5 Showcase</p>
+    </div>
+  </aside>
 
-    <button type="submit" [disabled]="vendorForm.invalid">Register Shop</button>
-  </form>
+  <!-- RIGHT SIDE: VENDOR MULTIPART FORM -->
+  <main class="form-side">
+    <div class="form-scroll-container">
+      <div class="form-card-inner">
+        
+        <header class="form-header">
+          <h2 class="welcome-title">Vendor Onboarding</h2>
+          <p class="subtitle text-muted">Set up your digital storefront parameters to begin receiving orders.</p>
+        </header>
+
+        <form [formGroup]="vendorForm" (ngSubmit)="onSubmit()" class="auth-form mt-4">
+          
+          <!-- SECTION 1: SHOP BASIC INFORMATION -->
+          <div class="form-section-header">
+            <h4>🏬 Store Profile Details</h4>
+          </div>
+
+          <div class="form-group">
+            <label for="shop_name">Official Shop Name</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">🏪</span>
+              <input 
+                type="text" 
+                id="shop_name" 
+                formControlName="shop_name" 
+                placeholder="e.g. Fresh Daily Bakery"
+                [class.invalid]="vendorForm.get('shop_name')?.touched && vendorForm.get('shop_name')?.invalid">
+            </div>
+            <div *ngIf="vendorForm.get('shop_name')?.touched && vendorForm.get('shop_name')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span>Store name is required for customer listings.</span>
+            </div>
+          </div>
+
+          <div class="input-grid">
+            <div class="form-group">
+              <label for="category">Retail Category</label>
+              <select id="category" formControlName="category" class="form-select">
+                <option value="VEGETABLES">Vegetables Vendor</option>
+                <option value="BAKERY">Bakery & Confectionery</option>
+                <option value="DAIRY">Dairy & Organic Farms</option>
+                <option value="GROCERY">Supermarket & Grocery</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="locality">Locality/Neighborhood</label>
+              <div class="input-icon-wrapper">
+                <span class="field-prefix-icon">📍</span>
+                <input 
+                  type="text" 
+                  id="locality" 
+                  formControlName="locality" 
+                  placeholder="e.g. Mira Road"
+                  [class.invalid]="vendorForm.get('locality')?.touched && vendorForm.get('locality')?.invalid">
+              </div>
+              <div *ngIf="vendorForm.get('locality')?.touched && vendorForm.get('locality')?.invalid" class="validation-message">
+                <span class="warning-icon">⚠️</span>
+                <span>Locality is required.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: OPERATIONS & DELIVERY PARAMS -->
+          <div class="form-section-header mt-3">
+            <h4>🚚 Fulfillment Operations</h4>
+          </div>
+
+          <div class="input-grid">
+            <div class="form-group">
+              <label for="pincode">Service Pincode</label>
+              <div class="input-icon-wrapper">
+                <span class="field-prefix-icon">📮</span>
+                <input 
+                  type="text" 
+                  id="pincode" 
+                  formControlName="pincode" 
+                  placeholder="6 Digits"
+                  [class.invalid]="vendorForm.get('pincode')?.touched && vendorForm.get('pincode')?.invalid">
+              </div>
+              <div *ngIf="vendorForm.get('pincode')?.touched && vendorForm.get('pincode')?.invalid" class="validation-message">
+                <span class="warning-icon">⚠️</span>
+                <span *ngIf="vendorForm.get('pincode')?.errors?.['required']">Pincode is required.</span>
+                <span *ngIf="vendorForm.get('pincode')?.errors?.['pattern']">Must be exactly 6 numbers.</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="delivery_fee">Base Delivery Charge (₹)</label>
+              <input 
+                type="number" 
+                id="delivery_fee" 
+                formControlName="delivery_fee" 
+                placeholder="0"
+                min="0"
+                [class.invalid]="vendorForm.get('delivery_fee')?.touched && vendorForm.get('delivery_fee')?.invalid">
+              <div *ngIf="vendorForm.get('delivery_fee')?.touched && vendorForm.get('delivery_fee')?.invalid" class="validation-message">
+                <span class="warning-icon">⚠️</span>
+                <span>Invalid delivery fee.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="free_delivery_threshold">Free Delivery Limit (₹) — <em>Set '0' to disable</em></label>
+            <input 
+              type="number" 
+              id="free_delivery_threshold" 
+              formControlName="free_delivery_threshold" 
+              placeholder="e.g. 500"
+              min="0"
+              [class.invalid]="vendorForm.get('free_delivery_threshold')?.touched && vendorForm.get('free_delivery_threshold')?.invalid">
+            <div *ngIf="vendorForm.get('free_delivery_threshold')?.touched && vendorForm.get('free_delivery_threshold')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span>Invalid threshold minimum limit.</span>
+            </div>
+          </div>
+
+          <!-- SECTION 3: CREDENTIALS -->
+          <div class="form-section-header mt-3">
+            <h4>🔐 Security & Login Credentials</h4>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Business Email</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">📧</span>
+              <input 
+                type="email" 
+                id="email" 
+                formControlName="email" 
+                placeholder="shop@localmart.com"
+                [class.invalid]="vendorForm.get('email')?.touched && vendorForm.get('email')?.invalid">
+            </div>
+            <div *ngIf="vendorForm.get('email')?.touched && vendorForm.get('email')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span *ngIf="vendorForm.get('email')?.errors?.['required']">Email is required.</span>
+              <span *ngIf="vendorForm.get('email')?.errors?.['email']">Enter a valid email layout.</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Enter Secure Password</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">🔒</span>
+              <input 
+                [type]="isPasswordVisible ? 'text' : 'password'" 
+                id="password" 
+                formControlName="password" 
+                placeholder="Minimum 6 characters"
+                [class.invalid]="vendorForm.get('password')?.touched && vendorForm.get('password')?.invalid">
+              <button type="button" class="password-toggle-eye" (click)="togglePasswordVisibility()">
+                {{ isPasswordVisible ? '👁️' : '🙈' }}
+              </button>
+            </div>
+            <div *ngIf="vendorForm.get('password')?.touched && vendorForm.get('password')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span *ngIf="vendorForm.get('password')?.errors?.['required']">Password is required.</span>
+              <span *ngIf="vendorForm.get('password')?.errors?.['minlength']">Must be at least 6 characters.</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg full-width mt-4" [disabled]="!vendorForm.valid">
+            🏢 Create Shop & Go Live
+          </button>
+        </form>
+
+        <footer class="login-routing-footer">
+          <p>Already have an account? <a routerLink="/login" class="route-link">Log In Instead</a></p>
+        </footer>
+
+      </div>
+    </div>
+  </main>
+
 </div>
-
-

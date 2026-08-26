@@ -1,19 +1,167 @@
-<div class="register-container">
-  <h2>Customer Registration</h2>
-  <p>Sign up to see fresh stock from trusted vendors in your neighbourhood.</p>
+<div class="register-wrapper">
   
-  <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
-    <!-- Account Details -->
-    <h3>Account Details</h3>
-    <input formControlName="name" placeholder="Full Name">
-    <input type="email" formControlName="email" placeholder="Email Address" required>
-    <input type="password" formControlName="password" placeholder="Password" required>
-
-    <!-- Locality Details (Crucial for filtering) -->
-    <h3>Your Neighbourhood</h3>
-    <input type="text" formControlName="area_name" placeholder="Area Name (e.g. Naya Nagar)" required>
-    <input type="text" formControlName="pincode" placeholder="Pincode" required>
+  <!-- LEFT SIDE: CUSTOMER PERKS SHOWCASE -->
+  <aside class="showcase-side">
+    <div class="brand-badge-overlay">
+      <span class="badge-text">🛒 Shop Local • Save Big</span>
+    </div>
     
-    <button type="submit" [disabled]="customerForm.invalid">Create Account</button>
-  </form>
+    <div class="showcase-content">
+      <h2 class="showcase-title">Why join LocalMart?</h2>
+      <p class="showcase-subtitle">Your neighborhood, unified on a single community commerce platform.</p>
+
+      <div class="feature-checklist">
+        <div class="feature-item">
+          <span class="feature-icon">🏪</span>
+          <div>
+            <strong>Support Neighborhood Shops</strong>
+            <span>Buy directly from your local bakeries, dairies, and grocers without intermediaries.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🚚</span>
+          <div>
+            <strong>Hyper-Local Delivery</strong>
+            <span>Get orders brought to your doorstep fast or pick them up at the counter yourself.</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🪙</span>
+          <div>
+            <strong>E-Wallet & Voting Rewards</strong>
+            <span>Vote on what inventory vendors should stock and earn daily lottery tokens for discounts!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="showcase-footer">
+      <p>© 2026 LocalMart Inc. • Built for Semester 5 Demo Showcase</p>
+    </div>
+  </aside>
+
+  <!-- RIGHT SIDE: SIGNUP FORM -->
+  <main class="form-side">
+    <div class="form-scroll-container">
+      <div class="form-card-inner">
+        
+        <header class="form-header">
+          <h2 class="welcome-title">Create Shopper Account</h2>
+          <p class="subtitle text-muted">Join neighbors buying fresh, local goods daily.</p>
+        </header>
+
+        <form [formGroup]="customerForm" (ngSubmit)="onSubmit()" class="auth-form mt-4">
+          
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="name">Your Full Name</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">👤</span>
+              <input 
+                type="text" 
+                id="name" 
+                formControlName="name" 
+                placeholder="e.g. John Doe"
+                [class.invalid]="customerForm.get('name')?.touched && customerForm.get('name')?.invalid">
+            </div>
+            <div *ngIf="customerForm.get('name')?.touched && customerForm.get('name')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span>Name is required to personalize your account profile.</span>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">📧</span>
+              <input 
+                type="email" 
+                id="email" 
+                formControlName="email" 
+                placeholder="you@example.com"
+                [class.invalid]="customerForm.get('email')?.touched && customerForm.get('email')?.invalid">
+            </div>
+            <div *ngIf="customerForm.get('email')?.touched && customerForm.get('email')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span *ngIf="customerForm.get('email')?.errors?.['required']">Email is required.</span>
+              <span *ngIf="customerForm.get('email')?.errors?.['email']">Please enter a valid email structure.</span>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-icon-wrapper">
+              <span class="field-prefix-icon">🔒</span>
+              <input 
+                [type]="isPasswordVisible ? 'text' : 'password'" 
+                id="password" 
+                formControlName="password" 
+                placeholder="Minimum 6 characters"
+                [class.invalid]="customerForm.get('password')?.touched && customerForm.get('password')?.invalid">
+              <button type="button" class="password-toggle-eye" (click)="togglePasswordVisibility()">
+                {{ isPasswordVisible ? '👁️' : '🙈' }}
+              </button>
+            </div>
+            <div *ngIf="customerForm.get('password')?.touched && customerForm.get('password')?.invalid" class="validation-message">
+              <span class="warning-icon">⚠️</span>
+              <span *ngIf="customerForm.get('password')?.errors?.['required']">Password is required.</span>
+              <span *ngIf="customerForm.get('password')?.errors?.['minlength']">Password must be at least 6 characters.</span>
+            </div>
+          </div>
+
+          <!-- Spacing divider grid for layout -->
+          <div class="input-grid">
+            <!-- Pincode -->
+            <div class="form-group">
+              <label for="pincode">6-Digit Pincode</label>
+              <div class="input-icon-wrapper">
+                <span class="field-prefix-icon">📮</span>
+                <input 
+                  type="text" 
+                  id="pincode" 
+                  formControlName="pincode" 
+                  placeholder="e.g. 401107"
+                  [class.invalid]="customerForm.get('pincode')?.touched && customerForm.get('pincode')?.invalid">
+              </div>
+              <div *ngIf="customerForm.get('pincode')?.touched && customerForm.get('pincode')?.invalid" class="validation-message">
+                <span class="warning-icon">⚠️</span>
+                <span *ngIf="customerForm.get('pincode')?.errors?.['required']">Pincode is required.</span>
+                <span *ngIf="customerForm.get('pincode')?.errors?.['pattern']">Must be exactly 6 numbers.</span>
+              </div>
+            </div>
+
+            <!-- Area Name -->
+            <div class="form-group">
+              <label for="area_name">Neighborhood/Locality</label>
+              <div class="input-icon-wrapper">
+                <span class="field-prefix-icon">📍</span>
+                <input 
+                  type="text" 
+                  id="area_name" 
+                  formControlName="area_name" 
+                  placeholder="e.g. Naya Nagar"
+                  [class.invalid]="customerForm.get('area_name')?.touched && customerForm.get('area_name')?.invalid">
+              </div>
+              <div *ngIf="customerForm.get('area_name')?.touched && customerForm.get('area_name')?.invalid" class="validation-message">
+                <span class="warning-icon">⚠️</span>
+                <span>Locality name is required.</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg full-width mt-3" [disabled]="!customerForm.valid">
+            👤 Create My Account
+          </button>
+        </form>
+
+        <footer class="login-routing-footer">
+          <p>Already have an account? <a routerLink="/login" class="route-link">Log In Instead</a></p>
+        </footer>
+
+      </div>
+    </div>
+  </main>
+
 </div>
