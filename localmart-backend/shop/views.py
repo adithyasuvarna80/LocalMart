@@ -6,12 +6,28 @@ from django.utils import timezone
 from datetime import timedelta
 from authentication.models import Vendor 
 from django.db.models import Case, When, Value, IntegerField
-
+from .cron import calculate_vendor_platform_score
 from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer
 from .serializers import CustomerShopSerializer,CustomerProfileSerializer
-
+from rest_framework.parsers import (
+    MultiPartParser,
+    FormParser,
+    JSONParser
+)
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review,TokenWallet, TokenTransaction
+from .models import (
+    Product,
+    DailyStock,
+    Order,
+    OrderItem,
+    PollItem,
+    DailyVote,
+    UserVote,
+    Review,
+    TokenWallet,
+    TokenTransaction,
+    StockUpdateLog
+)
 from .serializers import (
     ProductSerializer, VendorProfileSerializer, DailyStockSerializer, 
     CustomerShopSerializer, CustomerProfileSerializer, OrderSerializer,
@@ -23,12 +39,32 @@ from django.db import transaction
 
 
 
-class ProductListCreateView(generics.ListCreateAPIView):
+class ProductListCreateView(
+    generics.ListCreateAPIView
+):
+
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+
+    permission_classes = [
+        IsAuthenticated
+    ]
+
+    # Allows:
+    # FormData with image
+    # normal form data
+    # existing JSON requests
+    parser_classes = [
+        MultiPartParser,
+        FormParser,
+        JSONParser
+    ]
+
 
     def get_queryset(self):
-        return Product.objects.filter(vendor=self.request.user.vendor_profile)
+
+        return Product.objects.filter(
+            vendor=self.request.user.vendor_profile
+        )
 
 class ProductDetailView(generics.DestroyAPIView):
     serializer_class = ProductSerializer
@@ -51,21 +87,56 @@ class DailyStockManageView(APIView):
  permission_classes = [IsAuthenticated]
 
  def get(self, request):
-        vendor = request.user.vendor_profile
-        today = timezone.now().date()
-        
-        # Pre-fill yesterday's stock levels for today if missing [5]
-        stock_exists = DailyStock.objects.filter(product__vendor=vendor, date=today).exists()
+    vendor = request.user.vendor_profile
+    today = timezone.now().date()
+
+    # Get every product belonging to this vendor
+    products = Product.objects.filter(vendor=vendor)
+
+    # IMPORTANT:
+    # Check today's DailyStock PER PRODUCT,
+    # not once for the whole shop.
+    for product in products:
+
+        stock_exists = DailyStock.objects.filter(
+            product=product,
+            date=today
+        ).exists()
+
         if not stock_exists:
-            products = Product.objects.filter(vendor=vendor)
-            for product in products:
-                latest_stock = DailyStock.objects.filter(product=product).order_by('-date').first()
-                qty = latest_stock.quantity if latest_stock else 0.00
-                DailyStock.objects.create(product=product, date=today, quantity=qty)
-        
-        stock_items = DailyStock.objects.filter(product__vendor=vendor, date=today)
-        serializer = DailyStockSerializer(stock_items, many=True)
-        return Response(serializer.data)
+
+            # Get the most recent stock BEFORE today.
+            # This keeps your existing pre-fill feature.
+            latest_stock = DailyStock.objects.filter(
+                product=product,
+                date__lt=today
+            ).order_by('-date').first()
+
+            qty = (
+                latest_stock.quantity
+                if latest_stock
+                else 0.00
+            )
+
+            DailyStock.objects.create(
+                product=product,
+                date=today,
+                quantity=qty
+            )
+
+    # Now every product is guaranteed to have
+    # today's DailyStock record.
+    stock_items = DailyStock.objects.filter(
+        product__vendor=vendor,
+        date=today
+    ).order_by('product__name')
+
+    serializer = DailyStockSerializer(
+        stock_items,
+        many=True
+    )
+
+    return Response(serializer.data)
 
  def post(self, request):
     vendor = request.user.vendor_profile
@@ -106,9 +177,16 @@ class DailyStockManageView(APIView):
     vendor.needs_stock_nudge = False
     vendor.save()
 
+    StockUpdateLog.objects.update_or_create(
+    vendor=vendor,
+    date=timezone.now().date()
+)   
+    calculate_vendor_platform_score(vendor)
+
     return Response({
-        "message": "Stock quantities and daily rates successfully updated!"
-    })
+    "message": "Stock quantities and daily rates successfully updated!",
+    "platform_score": vendor.platform_score
+})
     
 
 class ToggleShopClosedView(APIView):
@@ -296,7 +374,14 @@ class UpdateOrderStatusView(APIView):
 
         order.status = new_status
         order.save()
-        return Response({"message": "Order status updated successfully", "status": order.status})
+
+        calculate_vendor_platform_score(order.vendor)
+
+        return Response({
+    "message": "Order status updated successfully",
+    "status": order.status,
+    "platform_score": order.vendor.platform_score
+})
     
 class CustomerConfirmDeliveryView(APIView):
     permission_classes = [IsAuthenticated]
@@ -315,7 +400,9 @@ class CustomerConfirmDeliveryView(APIView):
 
         order.status = 'COMPLETED'
         order.save()
-        return Response({"message": "Delivery confirmed successfully", "status": order.status})
+        calculate_vendor_platform_score(order.vendor)
+        return Response({"message": "Delivery confirmed successfully", "status": order.status,"platform_score": order.vendor.platform_score
+})
     
 class CustomerPollView(APIView):
     permission_classes = [AllowAny] 
@@ -398,28 +485,63 @@ class SubmitReviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
+        if not hasattr(request.user, 'customer_profile'):
+            return Response(
+                {"error": "Only customers can submit reviews."},
+                status=403
+            )
+
         order_id = request.data.get('order')
-        
-        
-        order = Order.objects.filter(id=order_id, customer=request.user.customer_profile, status='COMPLETED').first()
-        
+
+        order = Order.objects.filter(
+            id=order_id,
+            customer=request.user.customer_profile,
+            status='COMPLETED'
+        ).first()
+
         if not order:
-            return Response({"error": "Valid completed order not found."}, status=404)
+            return Response(
+                {"error": "Valid completed order not found."},
+                status=404
+            )
 
-        
         if hasattr(order, 'review'):
-            return Response({"error": "You have already reviewed this order."}, status=400)
+            return Response(
+                {"error": "You have already reviewed this order."},
+                status=400
+            )
 
-        
-        Review.objects.create(
+        # ---------------------------------------------
+        # Validate rating
+        # ---------------------------------------------
+
+        try:
+            rating = int(request.data.get('rating', 5))
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "Rating must be a number between 1 and 5."},
+                status=400
+            )
+
+        if rating < 1 or rating > 5:
+            return Response(
+                {"error": "Rating must be between 1 and 5 stars."},
+                status=400
+            )
+
+        review = Review.objects.create(
             order=order,
             vendor=order.vendor,
             customer=request.user.customer_profile,
-            rating=request.data.get('rating', 5),
+            rating=rating,
             text=request.data.get('text', '')
         )
-        return Response({"message": "Review submitted successfully!"})
 
+        return Response({
+            "message": "Review submitted successfully!",
+            "rating": review.rating
+        }, status=201)
 class VendorReviewsListView(APIView):
    
     permission_classes = [AllowAny] 

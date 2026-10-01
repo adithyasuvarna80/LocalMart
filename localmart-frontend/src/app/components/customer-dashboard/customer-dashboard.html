@@ -67,7 +67,7 @@
     <section *ngIf="activeTab === 'shops'" class="tab-pane">
       <div class="shops-layout">
         <!-- SHOPS SELECTION PANEL -->
-        <div class="shops-main-list">
+        <div class="shops-main-list" *ngIf="!selectedShop">
           <div class="section-title-row">
             <h3>Shops in {{ customerProfile?.area_name || 'Your Area' }}</h3>
             <span class="item-count-indicator">{{ shops.length }} shops available</span>
@@ -95,9 +95,45 @@
                   <h4 class="shop-title">{{ shop.shop_name }}</h4>
                   <span class="category-badge btn-sm">{{ shop.category }}</span>
                 </div>
-                <div class="score-badge">
-                  ⭐ {{ shop.platform_score || 'N/A' }}/10
-                </div>
+                <div class="rating-summary">
+
+  <!-- MAIN OVERALL RATING -->
+  <div class="overall-score-badge">
+    ⭐ {{ shop.overall_rating | number:'1.1-1' }}/10
+    <span class="rating-label">Overall</span>
+  </div>
+
+  <!-- Detailed rating breakdown -->
+  <div class="rating-breakdown">
+
+    <span class="platform-rating">
+      🛡️ Platform:
+      <strong>
+        {{ shop.platform_score | number:'1.1-1' }}/10
+      </strong>
+    </span>
+
+    <span class="customer-rating">
+      ★ Customer:
+      
+      <strong *ngIf="shop.review_count > 0">
+        {{ shop.average_rating | number:'1.1-1' }}/5
+      </strong>
+
+      <strong *ngIf="shop.review_count === 0">
+        No reviews yet
+      </strong>
+
+      <small *ngIf="shop.review_count > 0">
+        ({{ shop.review_count }}
+        {{ shop.review_count === 1 ? 'review' : 'reviews' }})
+      </small>
+
+    </span>
+
+  </div>
+
+</div>
               </div>
 
               <div class="shop-card-meta">
@@ -108,23 +144,38 @@
               <!-- PRODUCT STOCK UNDER THE SHOP -->
               <div class="shop-products-section" *ngIf="!shop.is_closed_today">
                 <h5 class="stock-title">Available Today:</h5>
-                
-                <div *ngIf="!shop.today_stock || shop.today_stock.length === 0" class="no-stock-msg">
+
+                <div
+                  *ngIf="!shop.today_stock || shop.today_stock.length === 0"
+                  class="no-stock-msg">
                   This shop hasn't updated its live inventory for today yet.
                 </div>
 
+                <!-- Only the first 3 products are shown on the shop card -->
                 <div class="compact-product-grid">
-                  <div *ngFor="let item of shop.today_stock" class="compact-product-row">
+                  <div
+                    *ngFor="let item of shop.preview_stock"
+                    class="compact-product-row">
+
                     <div class="product-info-col">
                       <img 
                         [src]="item.image_url || 'assets/default-product.png'" 
                         class="product-thumb-image" 
                         alt="{{ item.product_name }}"
                         onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' width=\'50\' height=\'50\'><rect width=\'100%\' height=\'100%\' fill=\'%23EFF6FF\'/><text x=\'50%\' y=\'50%\' font-size=\'20\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%232563EB\'>📦</text></svg>'">
+
                       <div>
-                        <strong class="item-name">{{ item.product_name }} </strong>
-                        <span class="item-price">₹{{ item.base_price }} / {{ item.unit }}</span>
-                        <span class="stock-left-label" [class.low-stock]="item.quantity <= 5">
+                        <strong class="item-name">
+                          {{ item.product_name }}
+                        </strong>
+
+                        <span class="item-price">
+                          ₹{{ item.base_price }} / {{ item.unit }}
+                        </span>
+
+                        <span
+                          class="stock-left-label"
+                          [class.low-stock]="item.quantity <= 5">
                           Only {{ item.quantity }} {{ item.unit }} left
                         </span>
                       </div>
@@ -137,21 +188,276 @@
                         [(ngModel)]="item.selectedQty" 
                         min="0.5" 
                         [step]="item.unit === 'KG' ? '0.1' : '1'"
-                        max="{{ item.quantity }}" 
+                        [max]="item.quantity" 
                         placeholder="Qty">
+
                       <button 
+                        type="button"
                         class="btn btn-primary btn-sm add-cart-btn" 
                         (click)="addToCart(shop, item)">
                         🛒 Add
                       </button>
                     </div>
+
                   </div>
                 </div>
+
+                <!-- Show the full-shop button only when there are more than 3 products -->
+                <div
+                  class="view-all-products-row"
+                  *ngIf="shop.today_stock && shop.today_stock.length > 3">
+
+                  <button
+                    type="button"
+                    class="view-all-products-btn"
+                    (click)="openShopProducts(shop)">
+                    View all {{ shop.today_stock.length }} products
+                    <span class="view-all-arrow">→</span>
+                  </button>
+
+                  <span class="more-products-text">
+                    +{{ shop.today_stock.length - 3 }} more available today
+                  </span>
+                </div>
+
               </div>
 
             </div>
           </div>
         </div>
+        <!-- FULL SHOP PRODUCTS SCREEN -->
+<div class="shop-products-full-screen" *ngIf="selectedShop">
+
+  <button
+    type="button"
+    class="back-to-shops-btn"
+    (click)="closeShopProducts()">
+    ← Back to all shops
+  </button>
+
+  <!-- SHOP HEADER -->
+  <div class="full-shop-header">
+
+    <div class="full-shop-header-info">
+
+      <span class="category-badge">
+        {{ selectedShop.category }}
+      </span>
+
+      <h2 class="full-shop-name">
+        {{ selectedShop.shop_name }}
+      </h2>
+
+      <div class="full-shop-meta">
+
+        <span>
+          📍 {{ selectedShop.locality }}
+        </span>
+
+        <span>
+          🚚 Delivery: ₹{{ selectedShop.delivery_fee }}
+          (Free over ₹{{ selectedShop.free_delivery_threshold }})
+        </span>
+
+      </div>
+
+    </div>
+
+    <!-- RATINGS -->
+    <div class="full-shop-ratings">
+
+      <div class="full-overall-rating">
+        ⭐ {{ selectedShop.overall_rating | number:'1.1-1' }}/10
+        <small>Overall</small>
+      </div>
+
+      <span>
+        🛡️ Platform:
+        <strong>
+          {{ selectedShop.platform_score | number:'1.1-1' }}/10
+        </strong>
+      </span>
+
+      <span *ngIf="selectedShop.review_count > 0">
+        ★ Customer:
+        <strong>
+          {{ selectedShop.average_rating | number:'1.1-1' }}/5
+        </strong>
+
+        ({{ selectedShop.review_count }}
+        {{ selectedShop.review_count === 1 ? 'review' : 'reviews' }})
+      </span>
+
+      <span *ngIf="selectedShop.review_count === 0">
+        ★ Customer: No reviews yet
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <!-- CLOSED SHOP MESSAGE -->
+  <div
+    class="full-shop-closed"
+    *ngIf="selectedShop.is_closed_today">
+
+    🚪 This shop is closed today.
+
+  </div>
+
+
+  <!-- ALL PRODUCTS -->
+  <div
+    class="full-products-section"
+    *ngIf="!selectedShop.is_closed_today">
+
+    <div class="full-products-heading">
+
+      <div>
+        <h3>Products Available Today</h3>
+
+        <p>
+          Live inventory published by
+          {{ selectedShop.shop_name }}
+        </p>
+      </div>
+
+      <span class="product-count-badge">
+
+        {{ selectedShop.today_stock.length }}
+
+        {{
+          selectedShop.today_stock.length === 1
+            ? 'Product'
+            : 'Products'
+        }}
+
+      </span>
+
+    </div>
+
+
+    <!-- EMPTY -->
+    <div
+      class="empty-state-card"
+      *ngIf="
+        !selectedShop.today_stock ||
+        selectedShop.today_stock.length === 0
+      ">
+
+      <span class="empty-icon">📦</span>
+
+      <h4>No live products available</h4>
+
+      <p>
+        This shop has not published any products for today.
+      </p>
+
+    </div>
+
+
+    <!-- FULL PRODUCTS GRID -->
+    <div
+      class="full-products-grid"
+      *ngIf="
+        selectedShop.today_stock &&
+        selectedShop.today_stock.length > 0
+      ">
+
+      <div
+        class="full-product-card"
+        *ngFor="let item of selectedShop.today_stock">
+
+        <div class="full-product-image-wrapper">
+
+          <img
+  [src]="item.image_url || 'assets/default-product.png'"
+  class="full-product-image"
+  alt="{{ item.product_name }}"
+  onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'><rect width=\'100%\' height=\'100%\' fill=\'%23EFF6FF\'/><text x=\'50%\' y=\'48%\' font-size=\'48\' dominant-baseline=\'middle\' text-anchor=\'middle\'>📦</text><text x=\'50%\' y=\'75%\' font-size=\'14\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%2364748B\'>Product Image</text></svg>'">
+
+        </div>
+
+
+        <div class="full-product-info">
+
+          <h4>
+            {{ item.product_name }}
+          </h4>
+
+          <div class="full-product-price">
+
+            ₹{{ item.base_price }}
+
+            <span>
+              / {{ item.unit }}
+            </span>
+
+          </div>
+
+
+          <div
+            class="full-stock-status"
+            [class.low-stock]="
+              item.quantity <= 5 &&
+              item.quantity > 0
+            "
+            [class.out-of-stock]="item.quantity <= 0">
+
+            <span *ngIf="item.quantity > 0">
+              {{ item.quantity }}
+              {{ item.unit }} available
+            </span>
+
+            <span *ngIf="item.quantity <= 0">
+              Sold Out
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <!-- ADD TO CART -->
+        <div
+          class="full-product-action"
+          *ngIf="item.quantity > 0">
+
+          <label>
+            Quantity
+          </label>
+
+          <div class="full-product-add-row">
+
+            <input
+              type="number"
+              class="qty-input"
+              [(ngModel)]="item.selectedQty"
+              min="0.5"
+              [step]="item.unit === 'KG' ? '0.1' : '1'"
+              [max]="item.quantity">
+
+            <button
+              type="button"
+              class="btn btn-primary add-cart-btn"
+              (click)="addToCart(selectedShop, item)">
+
+              🛒 Add
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
 
         <!-- CART & CHECKOUT SIDE PANEL -->
         <aside class="cart-side-panel">
@@ -168,6 +474,7 @@
                 Buying from: <strong>{{ cartVendorName }}</strong>
                 <button class="clear-cart-link" (click)="clearCart()">Clear Cart</button>
               </div>
+
 
               <!-- Delivery Progress Nudge -->
               <div class="nudge-banner" *ngIf="orderType === 'DELIVERY'">

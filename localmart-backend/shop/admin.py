@@ -7,5 +7,5 @@ admin.site.register(Order)
 admin.site.register(OrderItem)
 admin.site.register(PollItem)
 admin.site.register(Review)
-admin.site.register(TokenWallet)        # <-- ADD THIS LINE
+admin.site.register(TokenWallet)       
 admin.site.register(TokenTransaction) 

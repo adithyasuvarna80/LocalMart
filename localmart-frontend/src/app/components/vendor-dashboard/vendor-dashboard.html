@@ -241,11 +241,72 @@
 
             <div class="form-group">
               <label>Default Base Price (₹)</label>
-              <input type="number" formControlName="base_price" placeholder="e.g. 45" min="1">
+              <input
+                type="number"
+                formControlName="base_price"
+                placeholder="e.g. 45"
+                min="1">
             </div>
 
-            <button type="submit" class="btn btn-primary full-width mt-2" [disabled]="!productForm.valid">
-              Create Product Listing
+            <!-- PRODUCT PHOTO -->
+            <div class="form-group">
+              <label>
+                Product Photo
+                <span class="optional-label">(Optional)</span>
+              </label>
+
+              <div class="product-image-upload-box">
+                <input
+                  #productImageInput
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  (change)="onProductImageSelected($event)"
+                  class="product-image-input">
+
+                <small class="upload-help-text">
+                  JPG, PNG or WEBP • Maximum 5 MB
+                </small>
+
+                <!-- LOCAL PREVIEW BEFORE CLOUDINARY UPLOAD -->
+                <div
+  class="product-image-preview"
+  *ngIf="productImagePreview">
+
+  <div class="preview-image-wrapper">
+
+    <img
+      [src]="productImagePreview"
+      alt="Product image preview">
+
+    <button
+      type="button"
+      class="remove-image-btn"
+      (click)="removeProductImage()"
+      title="Remove selected image">
+      ✕
+    </button>
+
+  </div>
+
+  <span>
+    Image ready to upload
+  </span>
+
+</div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-primary full-width mt-2"
+              [disabled]="!productForm.valid || isCreatingProduct">
+
+              {{
+                isCreatingProduct
+                  ? 'Uploading Product...'
+                  : 'Create Product Listing'
+              }}
+
             </button>
           </form>
         </div>
@@ -261,10 +322,27 @@
 
           <div class="catalog-items-grid mt-3" *ngIf="products.length > 0">
             <div *ngFor="let prod of products" class="catalog-row-item">
-              <div>
-                <strong class="catalog-item-name">{{ prod.name }}</strong>
-                <span class="catalog-item-price">Base Rate: ₹{{ prod.base_price }} per {{ prod.unit }}</span>
+
+              <div class="catalog-product-main">
+
+                <div class="catalog-product-thumb">
+                  <img
+                    *ngIf="prod.image_url"
+                    [src]="prod.image_url"
+                    alt="{{ prod.name }}">
+
+                  <span *ngIf="!prod.image_url">📦</span>
+                </div>
+
+                <div>
+                  <strong class="catalog-item-name">{{ prod.name }}</strong>
+                  <span class="catalog-item-price">
+                    Base Rate: ₹{{ prod.base_price }} per {{ prod.unit }}
+                  </span>
+                </div>
+
               </div>
+
               <button class="btn btn-danger btn-sm" (click)="deleteProduct(prod.id)">
                 🗑️ Delete
               </button>
@@ -353,8 +431,10 @@
     <section *ngIf="activeTab === 'reviews'" class="tab-pane">
       <div class="content-card">
         <h3>Store Performance & Customer Reviews</h3>
-        <p class="subtitle">Direct, unedited neighborhood ratings used to calculate your Platform Score.</p>
-
+        <p class="subtitle">
+  Verified customer feedback from completed orders.
+  Customer ratings combine with your Platform Score to form your public Overall Rating.
+</p>
         <div *ngIf="reviews.length === 0" class="empty-state">
           <p>No reviews posted yet. Keep selling high-quality products to collect feedback!</p>
         </div>
@@ -364,9 +444,13 @@
             <div class="review-card-header">
               <div class="star-rating-box">
                 <!-- Inline safe rating loop (fixes the 1-star rendering) -->
-                <span class="filled-star" *ngFor="let star of [1-5]">
-                  {{ rev.rating >= star ? '★' : '☆' }}
-                </span>
+                <span
+    class="filled-star"
+    *ngFor="let star of [1, 2, 3, 4, 5]">
+
+    {{ rev.rating >= star ? '★' : '☆' }}
+
+</span>
                 <span class="score-number">({{ rev.rating }} / 5)</span>
               </div>
               <span class="review-date">{{ rev.created_at | date:'shortDate' }}</span>

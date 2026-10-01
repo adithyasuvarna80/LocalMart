@@ -1,4 +1,11 @@
-import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ChangeDetectorRef,
+  ViewChild,
+  ElementRef
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ShopService } from '../../services/shop';
 import { Router } from '@angular/router';
@@ -29,6 +36,7 @@ export class VendorDashboard implements OnInit {
    activeTab: string = 'live-stock';
 
 
+
   isClosedToday: boolean = false;
 
   products: any[] = [];
@@ -48,6 +56,16 @@ export class VendorDashboard implements OnInit {
     unit: ['KG', Validators.required],
     base_price: ['', [Validators.required, Validators.min(1)]]
   });
+
+  selectedProductImage: File | null = null;
+
+productImagePreview: string | null = null;
+
+isCreatingProduct: boolean = false;
+
+
+@ViewChild('productImageInput')
+productImageInput?: ElementRef<HTMLInputElement>;
 
   
 
@@ -216,18 +234,239 @@ export class VendorDashboard implements OnInit {
     }
   });
 }
-  onSubmit() {
-    if (this.productForm.valid) {
-      this.shopService.addProduct(this.productForm.value).subscribe({
-        next: (res) => {
-          this.products.push(res);
-          this.productForm.reset({ unit: 'KG' });
-          this.loadDailyStock(); 
-        },
-        error: (err) => console.error(err)
-      });
-    }
+onProductImageSelected(event: Event) {
+
+  const input =
+    event.target as HTMLInputElement;
+
+  const file =
+    input.files?.[0] || null;
+
+
+  if (!file) {
+
+    this.selectedProductImage = null;
+
+    this.productImagePreview = null;
+
+    return;
   }
+
+
+  // ----------------------------------
+  // Validate type
+  // ----------------------------------
+
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ];
+
+
+  if (!allowedTypes.includes(file.type)) {
+
+    this.toast.warning(
+      'Please select a JPG, PNG or WEBP image.'
+    );
+
+    input.value = '';
+
+    this.selectedProductImage = null;
+
+    this.productImagePreview = null;
+
+    return;
+  }
+
+
+  // ----------------------------------
+  // Validate size
+  // ----------------------------------
+
+  const maxSize =
+    5 * 1024 * 1024;
+
+
+  if (file.size > maxSize) {
+
+    this.toast.warning(
+      'Product image must be smaller than 5 MB.'
+    );
+
+    input.value = '';
+
+    this.selectedProductImage = null;
+
+    this.productImagePreview = null;
+
+    return;
+  }
+
+
+  // ----------------------------------
+  // Save file
+  // ----------------------------------
+
+  this.selectedProductImage = file;
+
+
+  // ----------------------------------
+  // Show preview
+  // ----------------------------------
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+
+    this.productImagePreview =
+      reader.result as string;
+
+    this.cdr.detectChanges();
+
+  };
+
+
+  reader.readAsDataURL(file);
+}
+  onSubmit() {
+
+  if (
+    !this.productForm.valid ||
+    this.isCreatingProduct
+  ) {
+    return;
+  }
+
+
+  const values =
+    this.productForm.getRawValue();
+
+
+  // Multipart request
+  const formData =
+    new FormData();
+
+
+  formData.append(
+    'name',
+    values.name || ''
+  );
+
+
+  formData.append(
+    'unit',
+    values.unit || 'KG'
+  );
+
+
+  formData.append(
+    'base_price',
+    String(
+      values.base_price || ''
+    )
+  );
+
+
+  // Add image only if vendor selected one
+  if (this.selectedProductImage) {
+
+    formData.append(
+      'image',
+      this.selectedProductImage,
+      this.selectedProductImage.name
+    );
+
+  }
+
+
+  this.isCreatingProduct = true;
+
+
+  this.shopService
+    .addProduct(formData)
+    .subscribe({
+
+      next: (res) => {
+
+        // Add new product to current UI
+        this.products.push(res);
+
+
+        // Reset normal form
+        this.productForm.reset({
+          unit: 'KG'
+        });
+
+
+        // Reset image
+        this.selectedProductImage = null;
+
+        this.productImagePreview = null;
+
+
+        if (this.productImageInput) {
+
+          this.productImageInput
+            .nativeElement
+            .value = '';
+
+        }
+
+
+        this.isCreatingProduct = false;
+
+
+        // Keep your existing live-stock feature
+        this.loadDailyStock();
+
+
+        this.toast.success(
+          'Product added successfully!'
+        );
+
+
+        this.cdr.detectChanges();
+
+      },
+
+
+      error: (err) => {
+
+        this.isCreatingProduct = false;
+
+
+        console.error(
+          'Failed to create product:',
+          err
+        );
+
+
+        const imageError =
+          err.error?.image;
+
+
+        if (imageError) {
+
+          this.toast.error(
+            Array.isArray(imageError)
+              ? imageError[0]
+              : imageError
+          );
+
+        } else {
+
+          this.toast.error(
+            'Failed to add product. Please try again.'
+          );
+
+        }
+
+      }
+
+    });
+
+}
 
   deleteProduct(productId: number) {
     if (confirm('Are you sure you want to delete this product?')) {
@@ -345,5 +584,16 @@ export class VendorDashboard implements OnInit {
       }, 50); // A tiny 50ms delay guarantees the canvas element is fully active in the DOM
     }
   }
+  removeProductImage() {
+
+  this.selectedProductImage = null;
+  this.productImagePreview = null;
+
+  if (this.productImageInput) {
+    this.productImageInput.nativeElement.value = '';
+  }
+
+  this.cdr.detectChanges();
+}
 
 }

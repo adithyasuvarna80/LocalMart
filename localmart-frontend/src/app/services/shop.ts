@@ -15,10 +15,16 @@ export class ShopService {
     return this.http.get<any[]>(`${this.apiUrl}/products/`);
   }
 
-  addProduct(productData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/products/`, productData);
-  }
+  addProduct(
+  productData: FormData
+): Observable<any> {
 
+  return this.http.post(
+    `${this.apiUrl}/products/`,
+    productData
+  );
+
+}
 
   deleteProduct(productId: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/products/${productId}/`);

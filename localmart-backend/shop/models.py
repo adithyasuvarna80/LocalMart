@@ -42,6 +42,23 @@ class DailyStock(models.Model):
 
     def __str__(self):
         return f"{self.product.name} | {self.date} | Qty: {self.quantity}"
+
+
+class StockUpdateLog(models.Model):
+    vendor = models.ForeignKey(
+        Vendor,
+        on_delete=models.CASCADE,
+        related_name='stock_update_logs'
+    )
+
+    date = models.DateField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('vendor', 'date')
+
+    def __str__(self):
+        return f"{self.vendor.shop_name} - {self.date}"
     
 
 class Order(models.Model):

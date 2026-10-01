@@ -434,3 +434,70 @@
   font-size: 0.95rem;
   color: var(--text-primary);
 }
+/* PRODUCT IMAGE UPLOAD */
+
+.optional-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+
+.product-image-upload-box {
+  margin-top: 6px;
+  padding: 14px;
+
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+
+  background: var(--very-light-blue);
+}
+
+
+.product-image-input {
+  width: 100%;
+}
+
+
+.upload-help-text {
+  display: block;
+
+  margin-top: 7px;
+
+  color: var(--text-muted);
+
+  font-size: 0.75rem;
+}
+
+
+.product-image-preview {
+  margin-top: 12px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+}
+
+
+.product-image-preview img {
+  width: 80px;
+  height: 80px;
+
+  border-radius: 10px;
+
+  border: 1px solid var(--border-color);
+
+  object-fit: cover;
+
+  background: #ffffff;
+}
+
+
+.product-image-preview span {
+  color: #15803d;
+
+  font-size: 0.8rem;
+
+  font-weight: 600;
+}

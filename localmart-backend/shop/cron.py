@@ -5,54 +5,158 @@ from .models import Order, DailyStock
 import random
 from django.utils import timezone
 from authentication.models import Customer
-from .models import UserVote, TokenWallet, TokenTransaction
+from .models import (
+    Order,
+    DailyStock,
+    StockUpdateLog,
+    UserVote,
+    TokenWallet,
+    TokenTransaction
+)
+
+def calculate_vendor_platform_score(vendor):
+    """
+    Calculate one vendor's Platform Score out of 10.
+
+    Components:
+    Stock consistency  = 30%
+    Acceptance rate    = 25%
+    Delivery completion= 25%
+    Demerit behaviour  = 20%
+    """
+
+    today = timezone.now().date()
+
+    # INCLUDING today = exactly 30 calendar dates
+    start_date = today - timedelta(days=29)
+
+    # -------------------------------------------------
+    # 1. STOCK UPDATE CONSISTENCY — 30%
+    # -------------------------------------------------
+
+    stock_days = StockUpdateLog.objects.filter(
+        vendor=vendor,
+        date__range=(start_date, today)
+    ).values('date').distinct().count()
+
+    stock_ratio = min(stock_days / 30.0, 1.0)
+
+    stock_score = stock_ratio * 3.0
+
+
+    # -------------------------------------------------
+    # Orders belonging to the last 30 days only
+    # -------------------------------------------------
+
+    recent_orders = Order.objects.filter(
+        vendor=vendor,
+        created_at__date__range=(start_date, today)
+    )
+
+
+    # -------------------------------------------------
+    # 2. ORDER ACCEPTANCE RATE — 25%
+    # -------------------------------------------------
+
+    accepted_orders = recent_orders.filter(
+        status__in=['ACCEPTED', 'READY', 'COMPLETED']
+    ).count()
+
+    rejected_orders = recent_orders.filter(
+        status='REJECTED'
+    ).count()
+
+    # PENDING orders are deliberately NOT counted.
+    decided_orders = accepted_orders + rejected_orders
+
+    if decided_orders > 0:
+        acceptance_rate = accepted_orders / decided_orders
+        acceptance_score = acceptance_rate * 2.5
+    else:
+        # Vendor should not be punished simply because
+        # nobody has placed/decided an order yet.
+        acceptance_score = 2.5
+
+
+    # -------------------------------------------------
+    # 3. DELIVERY COMPLETION RATE — 25%
+    # -------------------------------------------------
+
+    accepted_deliveries = recent_orders.filter(
+        order_type='DELIVERY',
+        status__in=['ACCEPTED', 'READY', 'COMPLETED']
+    )
+
+    total_accepted_deliveries = accepted_deliveries.count()
+
+    completed_deliveries = accepted_deliveries.filter(
+        status='COMPLETED'
+    ).count()
+
+    if total_accepted_deliveries > 0:
+        delivery_rate = (
+            completed_deliveries /
+            total_accepted_deliveries
+        )
+
+        delivery_score = delivery_rate * 2.5
+    else:
+        # No delivery orders = no delivery penalty
+        delivery_score = 2.5
+
+
+    # -------------------------------------------------
+    # 4. DEMERIT SCORE — 20%
+    # -------------------------------------------------
+
+    # 0 demerits  -> 2.0
+    # 1 demerit   -> 1.8
+    # 5 demerits  -> 1.0
+    # 10+         -> 0.0
+
+    demerit_score = max(
+        0.0,
+        10.0 - float(vendor.demerit_points)
+    ) * 0.20
+
+
+    # -------------------------------------------------
+    # FINAL SCORE /10
+    # -------------------------------------------------
+
+    final_score = (
+        stock_score +
+        acceptance_score +
+        delivery_score +
+        demerit_score
+    )
+
+    final_score = round(
+        min(max(final_score, 0.0), 10.0),
+        1
+    )
+
+    vendor.platform_score = final_score
+
+    vendor.save(
+        update_fields=['platform_score']
+    )
+
+    return final_score
+
 
 def calculate_platform_scores():
-    """Recalculates the platform score out of 10 for every vendor daily."""
-    today = timezone.now().date()
-    thirty_days_ago = today - timedelta(days=30)
-    
+    """
+    Recalculate Platform Score for every vendor.
+    """
+
     for vendor in Vendor.objects.all():
-        
-        stock_days = DailyStock.objects.filter(
-            product__vendor=vendor, 
-            date__gte=thirty_days_ago
-        ).values('date').distinct().count()
-        stock_score = (stock_days / 30.0) * 3.0 if stock_days else 0.0
+        calculate_vendor_platform_score(vendor)
 
-       
-        total_orders = Order.objects.filter(vendor=vendor).count()
-        accepted_orders = Order.objects.filter(
-            vendor=vendor, 
-            status__in=['ACCEPTED', 'READY', 'COMPLETED']
-        ).count()
-        acceptance_score = (accepted_orders / total_orders) * 2.5 if total_orders > 0 else 2.5
-
-        
-        total_deliveries = Order.objects.filter(
-            vendor=vendor, 
-            order_type='DELIVERY', 
-            status__in=['ACCEPTED', 'READY', 'COMPLETED']
-        ).count()
-        completed_deliveries = Order.objects.filter(
-            vendor=vendor, 
-            order_type='DELIVERY', 
-            status='COMPLETED'
-        ).count()
-        delivery_score = (completed_deliveries / total_deliveries) * 2.5 if total_deliveries > 0 else 2.5
-
-    
-        demerit_penalty = max(0, 10 - vendor.demerit_points)
-        demerit_score = demerit_penalty * 0.20
-
-       
-        final_score = round(stock_score + acceptance_score + delivery_score + demerit_score, 1)
-        
-        
-        vendor.platform_score = str(final_score)
-        vendor.save()
-        
-    print(f"[{timezone.now()}] Successfully updated platform scores for all vendors.")
+    print(
+        f"[{timezone.now()}] "
+        f"Successfully updated platform scores for all vendors."
+    )
 
 def apply_stock_nudges():
     """12-Hour Soft Nudge: Flags vendors who haven't updated stock recently."""
@@ -79,6 +183,9 @@ def apply_demerits():
         if vendor.stock_last_updated is None or vendor.stock_last_updated < twenty_four_hours_ago:
             vendor.demerit_points += 1
             vendor.save()
+
+            calculate_vendor_platform_score(vendor)
+
             updated_count += 1
             
     print(f"[{timezone.now()}] Assigned demerit points to {updated_count} vendors.")

@@ -22,7 +22,9 @@ export class CustomerDashboard implements OnInit {
 
   customerProfile: any = null; 
   shops: any[] = [];
+  selectedShop: any = null;
   orders: any[] = []; 
+  
   isLoading: boolean = true;
   deliveryAddress: string = ''; 
 
@@ -68,25 +70,33 @@ starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
   }
 
   loadLocalShops() {
-    this.shopService.getLocalShops().subscribe({
-      next: (data) => {
-        
-        this.shops = data.map(shop => {
-          shop.today_stock = shop.today_stock.map((item: any) => ({
-            ...item,
-            selectedQty: 1 
-          }));
-          return shop;
-        });
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Failed to load local shops', err);
-        this.isLoading = false;
-      }
-    });
-  }
+  this.shopService.getLocalShops().subscribe({
+    next: (data: any[]) => {
+
+      this.shops = data.map((shop: any) => {
+
+        // Prepare full live-stock list
+        shop.today_stock = (shop.today_stock || []).map((item: any) => ({
+          ...item,
+          selectedQty: 1
+        }));
+
+        // Only first 3 products are shown on main shop card
+        shop.preview_stock = shop.today_stock.slice(0, 3);
+
+        return shop;
+      });
+
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    },
+
+    error: (err) => {
+      console.error('Failed to load local shops', err);
+      this.isLoading = false;
+    }
+  });
+}
 
   loadOrders() {
     this.shopService.getOrders().subscribe({
@@ -97,6 +107,29 @@ starsArray: number[] = Array.from({ length: 5 }, (_, i) => i + 1);
       error: (err) => console.error('Failed to load orders', err)
     });
   }
+
+  openShopProducts(shop: any) {
+  this.selectedShop = shop;
+
+  // Move customer to the top of the shop screen
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+
+  this.cdr.detectChanges();
+}
+
+closeShopProducts() {
+  this.selectedShop = null;
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+
+  this.cdr.detectChanges();
+}
 
 
   addToCart(shop: any, item: any) {
