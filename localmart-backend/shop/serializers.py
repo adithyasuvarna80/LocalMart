@@ -1,9 +1,21 @@
+import cloudinary.uploader
+
 from django.utils import timezone
 from rest_framework import serializers
-from .models import Product, DailyStock
-from authentication.models import Vendor,Customer
-from .models import Product, DailyStock, Order, OrderItem, PollItem, DailyVote, UserVote,Review,TokenTransaction
-import cloudinary.uploader
+
+from authentication.models import Customer, Vendor
+
+from .models import (
+    DailyStock,
+    DailyVote,
+    Order,
+    OrderItem,
+    PollItem,
+    Product,
+    Review,
+    TokenTransaction,
+    TokenWallet,
+)
 
 class ProductSerializer(serializers.ModelSerializer):
 
@@ -138,7 +150,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
         DailyStock.objects.get_or_create(
             product=product,
-            date=timezone.now().date(),
+            date=timezone.localdate(),
             defaults={
                 'quantity': 0.00
             }
@@ -173,10 +185,15 @@ class VendorProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_stock_updated_today(self, obj):
-        if not obj.stock_last_updated:
-            return False
+     if not obj.stock_last_updated:
+        return False
 
-        return obj.stock_last_updated.date() == timezone.now().date()
+     return (
+        timezone.localdate(
+            obj.stock_last_updated
+        )
+        == timezone.localdate()
+    )
 
 class DailyStockSerializer(serializers.ModelSerializer):
 
@@ -267,7 +284,7 @@ class CustomerShopSerializer(serializers.ModelSerializer):
     def get_today_stock(self, obj):
         from django.utils import timezone
 
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         stock = DailyStock.objects.filter(
             product__vendor=obj,
@@ -368,7 +385,7 @@ class OrderSerializer(serializers.ModelSerializer):
         
         
         from django.utils import timezone
-        today = timezone.now().date()
+        today = timezone.localdate()
         
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
@@ -396,7 +413,7 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'name', 'pincode', 'area_name', 'wallet_balance']
 
     def get_wallet_balance(self, obj):
-        from .models import TokenWallet
+       
         wallet, created = TokenWallet.objects.get_or_create(customer=obj)
         return wallet.balance
 

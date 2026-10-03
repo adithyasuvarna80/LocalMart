@@ -1,8 +1,7 @@
 from django.db import models
 from django.utils import timezone
-from authentication.models import Vendor, Customer 
-from django.db import models
-from django.utils import timezone
+
+from authentication.models import Customer, Vendor
 
 class Product(models.Model):
     UNIT_CHOICES = (

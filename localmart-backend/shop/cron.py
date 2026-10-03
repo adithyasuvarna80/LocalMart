@@ -3,15 +3,19 @@ from datetime import timedelta
 from authentication.models import Vendor
 from .models import Order, DailyStock
 import random
+import random
+from datetime import timedelta
+
 from django.utils import timezone
-from authentication.models import Customer
+
+from authentication.models import Customer, Vendor
+
 from .models import (
     Order,
-    DailyStock,
     StockUpdateLog,
-    UserVote,
+    TokenTransaction,
     TokenWallet,
-    TokenTransaction
+    UserVote,
 )
 
 def calculate_vendor_platform_score(vendor):
@@ -25,7 +29,7 @@ def calculate_vendor_platform_score(vendor):
     Demerit behaviour  = 20%
     """
 
-    today = timezone.now().date()
+    today =timezone.localdate()
 
     # INCLUDING today = exactly 30 calendar dates
     start_date = today - timedelta(days=29)
@@ -198,7 +202,7 @@ def run_lottery_draw():
     runs a weighted random reward, increments winners' wallet balances,
     and logs the transactions.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     
     # 1. Query 'customer_id' instead of 'user_id'
     # 2. Exclude guest votes (where customer_id is null) using customer__isnull=False

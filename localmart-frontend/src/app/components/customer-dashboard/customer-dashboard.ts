@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms'; 
 import { DatePipe,DecimalPipe } from '@angular/common'; 
 import { CommonModule } from '@angular/common';
-import { ToastService, Toast } from '../../services/toast';
+import { ToastService } from '../../services/toast';
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -165,8 +165,9 @@ closeShopProducts() {
       });
     }
 
-    item.selectedQty = 1; 
-     this.toast.success(`Added ${item.selectedQty} ${item.unit} of ${item.name} to cart!`);
+    const addedQty = item.selectedQty;
+     this.toast.success(`Added ${item.selectedQty} ${item.unit} of ${item.product_name} to cart!`);
+     item.selectedQty = 1; 
     this.cdr.detectChanges();
   }
 
@@ -181,9 +182,13 @@ closeShopProducts() {
   }
 
   get finalDeliveryFee() {
-    if (this.orderType === 'PICKUP') return 0;
-    return this.subtotal >= this.freeDeliveryThreshold ? 0 : this.deliveryFee;
-  }
+  if (this.orderType === 'PICKUP') return 0;
+
+  return this.freeDeliveryThreshold > 0 &&
+         this.subtotal >= this.freeDeliveryThreshold
+    ? 0
+    : this.deliveryFee;
+}
   get tokenDiscount() {
   return this.tokensToUse * 0.10; 
 }
@@ -194,49 +199,191 @@ closeShopProducts() {
 }
 
   checkout() {
-  if (this.cart.length === 0) return;
-  
-  if (this.orderType === 'DELIVERY' && !this.deliveryAddress.trim()) {
-    this.toast.error('Please enter a delivery address.');
+
+  // -----------------------------------------
+  // 1. Cart must contain something
+  // -----------------------------------------
+
+  if (this.cart.length === 0) {
+    this.toast.error(
+      'Please add at least one product to your cart.'
+    );
     return;
   }
+
+
+  // -----------------------------------------
+  // 2. Delivery requires an address
+  // -----------------------------------------
+
+  if (
+    this.orderType === 'DELIVERY' &&
+    !this.deliveryAddress.trim()
+  ) {
+
+    this.toast.error(
+      'Please enter a delivery address.'
+    );
+
+    return;
+  }
+
+
+  // -----------------------------------------
+  // 3. Validate token amount
+  // -----------------------------------------
+
+  if (
+    this.tokensToUse < 0 ||
+    !Number.isInteger(this.tokensToUse)
+  ) {
+
+    this.toast.error(
+      'Please enter a valid whole number of tokens.'
+    );
+
+    return;
+  }
+
+
+  // Customer cannot use more tokens
+  // than are present in the wallet.
 
   if (this.tokensToUse > this.walletBalance) {
-    this.toast.error('You cannot redeem more tokens than your available balance.');
+
+    this.toast.error(
+      'You cannot redeem more tokens than your available balance.'
+    );
+
     return;
   }
 
 
+  // -----------------------------------------
+  // 4. Prevent discount exceeding order value
+  // -----------------------------------------
 
-const orderData = {
+  const amountBeforeDiscount =
+    this.subtotal + this.finalDeliveryFee;
+
+  // 1 token = ₹0.10
+  // Therefore ₹1 = 10 tokens
+
+  const maxUsableTokens =
+    Math.floor(amountBeforeDiscount * 10);
+
+  if (this.tokensToUse > maxUsableTokens) {
+
+    this.toast.error(
+      `You can use a maximum of ${maxUsableTokens} tokens for this order.`
+    );
+
+    return;
+  }
+
+
+  // -----------------------------------------
+  // 5. Send only information Django needs
+  // -----------------------------------------
+
+  const orderData = {
+
     vendor: this.cartVendorId,
+
     order_type: this.orderType,
-    subtotal: this.subtotal,
-    delivery_fee: this.finalDeliveryFee,
-    tokens_used: this.tokensToUse, // <-- ADDED
-    total_amount: this.totalAmount,
-    delivery_address: this.deliveryAddress,
+
+    tokens_used: this.tokensToUse,
+
+    delivery_address:
+      this.orderType === 'DELIVERY'
+        ? this.deliveryAddress.trim()
+        : '',
+
     items: this.cart.map(item => ({
+
       product: item.product,
-      quantity: item.cartQty,
-      price: item.price
+
+      quantity: item.cartQty
+
     }))
   };
 
-  this.shopService.placeOrder(orderData).subscribe({
-    next: (res) => {
-      this.toast.success(`Order placed successfully! Paid ₹${res.total_amount}.`);
-      this.clearCart();
-      this.tokensToUse = 0;
-      this.deliveryAddress = '';
-      this.loadOrders();
-      this.loadWalletHistory(); // <-- Refresh wallet numbers immediately
-    },
-    error: (err) => {
-      this.toast.error(err.error?.error || 'Failed to place order.');
-      console.error(err);
-    }
-  });
+
+  // -----------------------------------------
+  // 6. Place order
+  // -----------------------------------------
+
+  this.shopService
+    .placeOrder(orderData)
+    .subscribe({
+
+      next: (res) => {
+
+        // IMPORTANT:
+        // Display Django's final total,
+        // not Angular's calculated total.
+
+        this.toast.success(
+          `Order placed successfully! Paid ₹${res.total_amount}.`
+        );
+
+
+        // Clear checkout data
+
+        this.clearCart();
+
+        this.tokensToUse = 0;
+
+        this.deliveryAddress = '';
+
+
+        // Refresh orders
+
+        this.loadOrders();
+
+
+        // Refresh wallet because tokens
+        // may have been redeemed.
+
+        this.loadWalletHistory();
+
+
+        // Refresh shops/current stock because
+        // Django has just deducted DailyStock.
+
+        this.loadLocalShops();
+
+      },
+
+
+      error: (err) => {
+
+        // Django now returns useful errors such as:
+        // "Only 2 KG of Rice is available."
+        // "This shop is closed today."
+        // "Insufficient token balance."
+
+        const message =
+          err.error?.error ||
+          'Failed to place order.';
+
+        this.toast.error(message);
+
+        console.error(
+          'Order placement failed:',
+          err
+        );
+
+
+        // Stock may have changed since
+        // the customer originally loaded the page.
+        // Refresh it after a rejected checkout.
+
+        this.loadLocalShops();
+
+      }
+
+    });
 }
 
   logout() { 

@@ -12,7 +12,7 @@ import { Router } from '@angular/router';
 import Chart from 'chart.js/auto';
 import { DatePipe } from '@angular/common';
 import { CommonModule } from '@angular/common';
-import { ToastService, Toast } from '../../services/toast';
+import { ToastService } from '../../services/toast';
 
 @Component({
   selector: 'app-vendor-dashboard',
@@ -78,52 +78,94 @@ productImageInput?: ElementRef<HTMLInputElement>;
   }
 
     saveLiveStock() {
-  this.shopService.updateDailyStock(this.dailyStock).subscribe({
-    next: () => {
-      const today = new Date().toISOString().split('T')[0];
 
-      localStorage.setItem(
-        `last_stock_submit_${this.userEmail}`,
-        today
-      );
+  this.shopService
+    .updateDailyStock(this.dailyStock)
+    .subscribe({
 
-      this.needsStockUpdate = false;
+      next: () => {
 
-      this.loadProfile();
+        this.needsStockUpdate = false;
 
-      this.toast.success('Live stock updated successfully! ✅');
-    },
-    error: (err) => {
-      this.toast.error('Failed to update live stock.');
-      console.error(err);
-    }
-  });
+        // Ask Django for the real current status.
+        this.loadProfile();
+
+        this.toast.success(
+          'Live stock updated successfully! ✅'
+        );
+
+      },
+
+      error: (err) => {
+
+        this.toast.error(
+          'Failed to update live stock.'
+        );
+
+        console.error(
+          'Failed to update live stock:',
+          err
+        );
+
+      }
+
+    });
 }
 
 
   
    toggleShopClosed() {
-    this.shopService.toggleShopClosed().subscribe({
+
+  this.shopService
+    .toggleShopClosed()
+    .subscribe({
+
       next: (res) => {
-        this.isClosedToday = res.is_closed_today;
+
+        this.isClosedToday =
+          res.is_closed_today;
+
+
         if (this.isClosedToday) {
-          this.toast.warning('Your shop is set to CLOSED for today.');
-          this.needsStockUpdate = false; // Dismiss the blocker gate instantly
-          
-          // 🌟 FIX: Record today's closed status under the namespaced key to bypass on refresh
-          const today = new Date().toISOString().split('T')[0];
-          localStorage.setItem(`last_stock_submit_${this.userEmail}`, today);
+
+          this.needsStockUpdate = false;
+
+          this.toast.warning(
+            'Your shop is set to CLOSED for today.'
+          );
+
         } else {
-          this.toast.success('Your shop is now OPEN and accepting orders!');
+
+          this.toast.success(
+            'Your shop is now OPEN.'
+          );
+
         }
+
+
+        // Django is the source of truth.
+        // Reload the profile after changing status.
+
         this.loadProfile();
+
       },
+
+
       error: (err) => {
-        this.toast.error('Failed to toggle shop status.');
-        console.error(err);
+
+        this.toast.error(
+          'Failed to toggle shop status.'
+        );
+
+        console.error(
+          'Failed to toggle shop status:',
+          err
+        );
+
       }
+
     });
-  }
+}
 
     loadDailyStock() {
   this.shopService.getDailyStock().subscribe({
@@ -153,39 +195,56 @@ productImageInput?: ElementRef<HTMLInputElement>;
 
  
    submitStock() {
-  const stockPayload = this.dailyStock.map(item => ({
-    id: item.id,
-    quantity: item.quantity,
-    base_price: item.base_price
-  }));
 
-  this.shopService.updateDailyStock(stockPayload).subscribe({
-    next: () => {
-      const today = new Date().toISOString().split('T')[0];
+  const stockPayload =
+    this.dailyStock.map(item => ({
 
-      // Keep localStorage for compatibility/cache
-      localStorage.setItem(
-        `last_stock_submit_${this.userEmail}`,
-        today
-      );
+      id: item.id,
 
-      this.needsStockUpdate = false;
+      quantity: item.quantity,
 
-      this.loadProfile();
+      base_price: item.base_price
 
-      this.toast.success(
-        'Live daily inventory published and storefront is open!'
-      );
-    },
+    }));
 
-    error: (err) => {
-      console.error('Failed to update stock:', err);
 
-      this.toast.error(
-        'Failed to update live stock. Please try again.'
-      );
-    }
-  });
+  this.shopService
+    .updateDailyStock(stockPayload)
+    .subscribe({
+
+      next: () => {
+
+        this.needsStockUpdate = false;
+
+
+        // Django determines whether today's
+        // stock has actually been submitted.
+
+        this.loadProfile();
+
+
+        this.toast.success(
+          'Live daily inventory published and storefront is open!'
+        );
+
+      },
+
+
+      error: (err) => {
+
+        console.error(
+          'Failed to update stock:',
+          err
+        );
+
+
+        this.toast.error(
+          'Failed to update live stock. Please try again.'
+        );
+
+      }
+
+    });
 }
 
    loadProducts() {
@@ -473,6 +532,9 @@ onProductImageSelected(event: Event) {
       this.shopService.deleteProduct(productId).subscribe({
         next: () => {
           this.products = this.products.filter(p => p.id !== productId);
+           this.loadDailyStock();
+
+           this.toast.success('Product deleted successfully!');
         },
         error: (err) => {
           this.toast.error('Failed to delete product.');

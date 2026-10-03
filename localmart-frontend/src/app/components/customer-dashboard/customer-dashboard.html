@@ -255,9 +255,11 @@
         </span>
 
         <span>
-          🚚 Delivery: ₹{{ selectedShop.delivery_fee }}
+  🚚     Delivery: ₹{{ selectedShop.delivery_fee }}
+       <span *ngIf="+selectedShop.free_delivery_threshold > 0">
           (Free over ₹{{ selectedShop.free_delivery_threshold }})
-        </span>
+      </span>
+      </span>
 
       </div>
 
@@ -477,15 +479,24 @@
 
 
               <!-- Delivery Progress Nudge -->
-              <div class="nudge-banner" *ngIf="orderType === 'DELIVERY'">
-                <span *ngIf="subtotal < freeDeliveryThreshold">
-                  🚚 Add <strong>₹{{ freeDeliveryThreshold - subtotal }}</strong> more for <strong>FREE DELIVERY</strong>!
-                </span>
-                <span *ngIf="subtotal >= freeDeliveryThreshold" class="free-delivery-text">
-                  🎉 Congratulations! You qualify for <strong>FREE DELIVERY</strong>!
-                </span>
-              </div>
+              <div
+  class="nudge-banner"
+  *ngIf="orderType === 'DELIVERY' && freeDeliveryThreshold > 0">
 
+  <span *ngIf="subtotal < freeDeliveryThreshold">
+    🚚 Add
+    <strong>₹{{ freeDeliveryThreshold - subtotal }}</strong>
+    more for <strong>FREE DELIVERY</strong>!
+  </span>
+
+  <span
+    *ngIf="subtotal >= freeDeliveryThreshold"
+    class="free-delivery-text">
+    🎉 Congratulations! You qualify for
+    <strong>FREE DELIVERY</strong>!
+  </span>
+
+</div>
               <!-- Cart List -->
               <ul class="cart-items-list">
                 <li *ngFor="let item of cart" class="cart-item-row">

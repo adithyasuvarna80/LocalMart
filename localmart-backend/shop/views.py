@@ -1,41 +1,43 @@
-from rest_framework import generics
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+from django.db import transaction
+from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
-from datetime import timedelta
-from authentication.models import Vendor 
-from django.db.models import Case, When, Value, IntegerField
+
+from rest_framework import generics
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from authentication.models import Vendor
+
 from .cron import calculate_vendor_platform_score
-from .serializers import ProductSerializer, VendorProfileSerializer, DailyStockSerializer
-from .serializers import CustomerShopSerializer,CustomerProfileSerializer
-from rest_framework.parsers import (
-    MultiPartParser,
-    FormParser,
-    JSONParser
-)
-from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import (
-    Product,
     DailyStock,
+    DailyVote,
     Order,
     OrderItem,
     PollItem,
-    DailyVote,
-    UserVote,
+    Product,
     Review,
-    TokenWallet,
+    StockUpdateLog,
     TokenTransaction,
-    StockUpdateLog
+    TokenWallet,
+    UserVote,
 )
 from .serializers import (
-    ProductSerializer, VendorProfileSerializer, DailyStockSerializer, 
-    CustomerShopSerializer, CustomerProfileSerializer, OrderSerializer,
-    PollItemSerializer, DailyVoteSerializer,ReviewSerializer,TokenTransactionSerializer
+    CustomerProfileSerializer,
+    CustomerShopSerializer,
+    DailyStockSerializer,
+    DailyVoteSerializer,
+    OrderSerializer,
+    PollItemSerializer,
+    ProductSerializer,
+    ReviewSerializer,
+    TokenTransactionSerializer,
+    VendorProfileSerializer,
 )
-from decimal import Decimal
-from django.db import transaction
-
 
 
 
@@ -88,7 +90,7 @@ class DailyStockManageView(APIView):
 
  def get(self, request):
     vendor = request.user.vendor_profile
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     # Get every product belonging to this vendor
     products = Product.objects.filter(vendor=vendor)
@@ -179,7 +181,7 @@ class DailyStockManageView(APIView):
 
     StockUpdateLog.objects.update_or_create(
     vendor=vendor,
-    date=timezone.now().date()
+    date=timezone.localdate()
 )   
     calculate_vendor_platform_score(vendor)
 
@@ -246,48 +248,340 @@ class PlaceOrderView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        # 1. Verify user role first to prevent AttributeErrors
+
+        # -------------------------------------------------
+        # 1. Only customers can place orders
+        # -------------------------------------------------
+
         if not hasattr(request.user, 'customer_profile'):
-            return Response({"error": "Only customers can place orders."}, status=403)
-            
+            return Response(
+                {"error": "Only customers can place orders."},
+                status=403
+            )
+
         customer = request.user.customer_profile
         data = request.data
-        
-        vendor_id = data.get('vendor')
-        order_type = data.get('order_type')
-        subtotal = float(data.get('subtotal', 0.00))
-        delivery_fee = float(data.get('delivery_fee', 0.00))
-        tokens_used = int(data.get('tokens_used', 0))
-        delivery_address = data.get('delivery_address', '')
 
-        # 2. Process Token Wallet Deductions
-        discount_amount = 0.00
-        if tokens_used > 0:
-            wallet, created = TokenWallet.objects.get_or_create(customer=customer)
-            if wallet.balance < tokens_used:
-                return Response({"error": "Insufficient token balance"}, status=400)
-            
-            # Redemption calculation: 50 tokens = ₹5 discount
-            discount_amount = float(tokens_used) * 0.10
-            
-            # Deduct tokens and write the transaction ledger
-            wallet.balance -= tokens_used
-            wallet.save()
-            
-            TokenTransaction.objects.create(
-                customer=customer,
-                amount=-tokens_used,
-                transaction_type='REDEMPTION',
-                description=f"Redeemed {tokens_used} tokens for ₹{discount_amount:.2f} discount at checkout."
+        # -------------------------------------------------
+        # 2. Validate vendor
+        # -------------------------------------------------
+
+        try:
+            vendor_id = int(data.get('vendor'))
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "Invalid vendor."},
+                status=400
             )
-            
-        # 3. Calculate Final Checkout Total
-        total_amount = max(0.00, subtotal + delivery_fee - discount_amount)
-        
-        # 4. Save the single order cleanly to your database
+
+        vendor = Vendor.objects.filter(
+            id=vendor_id
+        ).first()
+
+        if not vendor:
+            return Response(
+                {"error": "Vendor not found."},
+                status=404
+            )
+
+        # LocalMart is locality-first
+        if vendor.pincode != customer.pincode:
+            return Response(
+                {
+                    "error":
+                    "You can only order from shops in your registered pincode."
+                },
+                status=400
+            )
+
+        if vendor.is_closed_today:
+            return Response(
+                {"error": "This shop is closed today."},
+                status=400
+            )
+
+        # -------------------------------------------------
+        # 3. Validate order type and address
+        # -------------------------------------------------
+
+        order_type = str(
+            data.get('order_type', '')
+        ).upper()
+
+        if order_type not in ['PICKUP', 'DELIVERY']:
+            return Response(
+                {"error": "Invalid order type."},
+                status=400
+            )
+
+        delivery_address = str(
+            data.get('delivery_address') or ''
+        ).strip()
+
+        if order_type == 'DELIVERY' and not delivery_address:
+            return Response(
+                {
+                    "error":
+                    "Delivery address is required for home delivery."
+                },
+                status=400
+            )
+
+        if order_type == 'PICKUP':
+            delivery_address = ''
+
+        # -------------------------------------------------
+        # 4. Validate cart
+        # -------------------------------------------------
+
+        items = data.get('items', [])
+
+        if not isinstance(items, list) or len(items) == 0:
+            return Response(
+                {"error": "Your cart is empty."},
+                status=400
+            )
+
+        # Combine duplicate product IDs if somebody
+        # manipulates the API request manually.
+        requested_products = {}
+
+        try:
+            for item in items:
+
+                product_id = int(
+                    item.get('product')
+                )
+
+                quantity = Decimal(
+                    str(item.get('quantity'))
+                )
+
+                if quantity <= 0:
+                    return Response(
+                        {
+                            "error":
+                            "Product quantity must be greater than zero."
+                        },
+                        status=400
+                    )
+
+                requested_products[product_id] = (
+                    requested_products.get(
+                        product_id,
+                        Decimal('0')
+                    ) + quantity
+                )
+
+        except (
+            TypeError,
+            ValueError,
+            InvalidOperation
+        ):
+            return Response(
+                {"error": "Invalid product or quantity."},
+                status=400
+            )
+
+        # -------------------------------------------------
+        # 5. Validate today's real stock
+        # -------------------------------------------------
+
+        today = timezone.localdate()
+
+        validated_items = []
+
+        subtotal = Decimal('0.00')
+
+        for product_id, quantity in requested_products.items():
+
+            product = Product.objects.filter(
+                id=product_id,
+                vendor=vendor
+            ).first()
+
+            if not product:
+                return Response(
+                    {
+                        "error":
+                        "One of the selected products does not belong to this shop."
+                    },
+                    status=400
+                )
+
+            # Lock stock row while this order is being created.
+            # Prevents two simultaneous orders from overselling.
+            stock = DailyStock.objects.select_for_update().filter(
+                product=product,
+                date=today
+            ).first()
+
+            if not stock:
+                return Response(
+                    {
+                        "error":
+                        f"{product.name} does not have stock available for today."
+                    },
+                    status=400
+                )
+
+            available_quantity = Decimal(
+                str(stock.quantity)
+            )
+
+            if (
+                stock.is_sold_out
+                or quantity > available_quantity
+            ):
+                return Response(
+                    {
+                        "error":
+                        f"Only {available_quantity} "
+                        f"{product.unit} of {product.name} is available."
+                    },
+                    status=400
+                )
+
+            # IMPORTANT:
+            # Price comes from PostgreSQL, NOT Angular.
+            price = Decimal(
+                str(product.base_price)
+            )
+
+            subtotal += (
+                price * quantity
+            )
+
+            validated_items.append(
+                (
+                    product,
+                    stock,
+                    quantity,
+                    price
+                )
+            )
+
+        subtotal = subtotal.quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        # -------------------------------------------------
+        # 6. Calculate delivery fee on backend
+        # -------------------------------------------------
+
+        if order_type == 'PICKUP':
+
+            delivery_fee = Decimal('0.00')
+
+        else:
+
+            free_delivery_threshold = Decimal(
+                str(
+                    vendor.free_delivery_threshold
+                    or 0
+                )
+            )
+
+            vendor_delivery_fee = Decimal(
+                str(
+                    vendor.delivery_fee
+                    or 0
+                )
+            )
+
+            if free_delivery_threshold > 0 and subtotal >= free_delivery_threshold:
+                delivery_fee = Decimal('0.00')
+            else:
+                delivery_fee = vendor_delivery_fee
+
+        delivery_fee = delivery_fee.quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        # -------------------------------------------------
+        # 7. Validate token redemption
+        # -------------------------------------------------
+
+        try:
+            tokens_used = int(
+                data.get('tokens_used', 0)
+            )
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "Invalid token amount."},
+                status=400
+            )
+
+        if tokens_used < 0:
+            return Response(
+                {
+                    "error":
+                    "Token amount cannot be negative."
+                },
+                status=400
+            )
+
+        gross_total = (
+            subtotal + delivery_fee
+        )
+
+        discount_amount = (
+            Decimal(tokens_used)
+            * Decimal('0.10')
+        )
+
+        if discount_amount > gross_total:
+            return Response(
+                {
+                    "error":
+                    "Token discount cannot exceed the order amount."
+                },
+                status=400
+            )
+
+        wallet = None
+
+        if tokens_used > 0:
+
+            wallet = (
+                TokenWallet.objects
+                .select_for_update()
+                .filter(customer=customer)
+                .first()
+            )
+
+            if (
+                not wallet
+                or wallet.balance < tokens_used
+            ):
+                return Response(
+                    {
+                        "error":
+                        "Insufficient token balance."
+                    },
+                    status=400
+                )
+
+        # -------------------------------------------------
+        # 8. Final total calculated ONLY by backend
+        # -------------------------------------------------
+
+        total_amount = (
+            gross_total - discount_amount
+        ).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        # -------------------------------------------------
+        # 9. Create order
+        # -------------------------------------------------
+
         order = Order.objects.create(
             customer=customer,
-            vendor_id=vendor_id,
+            vendor=vendor,
             order_type=order_type,
             subtotal=subtotal,
             delivery_fee=delivery_fee,
@@ -295,33 +589,66 @@ class PlaceOrderView(APIView):
             delivery_address=delivery_address,
             status='PENDING'
         )
-        
-        # 5. Save items & deduct stock level quantities
-        for item in data.get('items', []):
-            product_id = item.get('product')
-            quantity = float(item.get('quantity'))
-            price = float(item.get('price'))
-            
+
+        # -------------------------------------------------
+        # 10. Create order items and deduct stock
+        # -------------------------------------------------
+
+        for (
+            product,
+            stock,
+            quantity,
+            price
+        ) in validated_items:
+
             OrderItem.objects.create(
-                order=order, 
-                product_id=product_id, 
-                quantity=quantity, 
+                order=order,
+                product=product,
+                quantity=quantity,
                 price=price
             )
-            
-            # Real-time stock decrement
-            today = timezone.now().date()
-            try:
-                stock = DailyStock.objects.get(product_id=product_id, date=today)
-                stock.quantity = max(0.00, float(stock.quantity) - quantity)
-                stock.is_sold_out = (stock.quantity <= 0)
-                stock.save()
-            except DailyStock.DoesNotExist:
-                pass
-                
-        # 6. Serialize the successfully created order and return it!
+
+            stock.quantity = (
+                Decimal(str(stock.quantity))
+                - quantity
+            )
+
+            # DailyStock.save() already maintains
+            # is_sold_out based on quantity.
+            stock.save()
+
+        # -------------------------------------------------
+        # 11. Deduct wallet tokens
+        # -------------------------------------------------
+
+        if tokens_used > 0 and wallet:
+
+            wallet.balance -= tokens_used
+            wallet.save(
+                update_fields=['balance']
+            )
+
+            TokenTransaction.objects.create(
+                customer=customer,
+                amount=-tokens_used,
+                transaction_type='REDEMPTION',
+                description=(
+                    f"Redeemed {tokens_used} tokens "
+                    f"for ₹{discount_amount:.2f} "
+                    f"discount at checkout."
+                )
+            )
+
+        # -------------------------------------------------
+        # 12. Return final server-calculated order
+        # -------------------------------------------------
+
         serializer = OrderSerializer(order)
-        return Response(serializer.data, status=201)
+
+        return Response(
+            serializer.data,
+            status=201
+        )
 
 class OrderListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -364,10 +691,9 @@ class UpdateOrderStatusView(APIView):
 
         
         valid_transitions = {
-            'PENDING': ['ACCEPTED', 'REJECTED'],
-            'ACCEPTED': ['READY'],
-            'READY': ['COMPLETED']
-        }
+    'PENDING': ['ACCEPTED', 'REJECTED'],
+    'ACCEPTED': ['READY'],
+}
 
         if new_status not in valid_transitions.get(current_status, []):
             return Response({"error": f"Invalid transition from {current_status} to {new_status}"}, status=400)
@@ -415,7 +741,7 @@ class CustomerPollView(APIView):
             
         items = PollItem.objects.all()
         data = PollItemSerializer(items, many=True).data
-        today = timezone.now().date()
+        today = timezone.localdate()
         
         # Attach live vote counts for this specific area
         for item in data:
@@ -434,7 +760,7 @@ class CustomerPollView(APIView):
             customer_profile = request.user.customer_profile
             
         session_id = request.META.get('HTTP_X_SESSION_ID', 'guest_default_session')
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         
         if customer_profile:
@@ -472,7 +798,7 @@ class VendorPollChartDataView(APIView):
         if not hasattr(request.user, 'vendor_profile'):
             return Response({"error": "Only vendors can view chart data."}, status=403)
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         # Grab the vendor's specific area
         vendor_pincode = request.user.vendor_profile.pincode 
         
